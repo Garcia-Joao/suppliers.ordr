@@ -51,15 +51,10 @@ function getCurrentCompany(user: CurrentUser | null): CompanyOption | null {
 
 function getCompanies(user: CurrentUser | null): CompanyOption[] {
   if (!user) return []
-
-  if (Array.isArray(user.companies) && user.companies.length > 0) {
-    return user.companies
-  }
+  if (Array.isArray(user.companies) && user.companies.length > 0) return user.companies
 
   if (Array.isArray(user.memberships)) {
-    return user.memberships
-      .map((membership) => membership.company)
-      .filter(Boolean) as CompanyOption[]
+    return user.memberships.map((membership) => membership.company).filter(Boolean) as CompanyOption[]
   }
 
   const current = getCurrentCompany(user)
@@ -80,12 +75,11 @@ export function SupplierShell({ children }: { children: ReactNode }) {
   const companies = useMemo(() => getCompanies(user), [user])
 
   useEffect(() => {
-    const isDark =
-      document.documentElement.classList.contains('dark') ||
-      localStorage.getItem('ordr-suppliers-theme') !== 'light'
+    const stored = localStorage.getItem('ordr-suppliers-theme')
+    const shouldUseDark = stored ? stored === 'dark' : true
 
-    setDarkMode(isDark)
-    document.documentElement.classList.toggle('dark', isDark)
+    setDarkMode(shouldUseDark)
+    document.documentElement.classList.toggle('dark', shouldUseDark)
   }, [])
 
   useEffect(() => {
@@ -162,10 +156,10 @@ export function SupplierShell({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-950 dark:bg-slate-950 dark:text-white">
-        <div className="rounded-[2rem] border border-slate-200 bg-white px-6 py-5 shadow-sm dark:border-white/10 dark:bg-slate-900">
-          <div className="h-2 w-44 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
-            <div className="h-full w-1/2 animate-pulse rounded-full bg-emerald-400" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--supplier-bg)] text-[var(--supplier-text)]">
+        <div className="supplier-card rounded-[2rem] px-6 py-5">
+          <div className="h-2 w-44 overflow-hidden rounded-full bg-[var(--supplier-card-muted)]">
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-[var(--supplier-primary)]" />
           </div>
           <p className="mt-4 text-sm font-black">Carregando painel...</p>
         </div>
@@ -178,12 +172,12 @@ export function SupplierShell({ children }: { children: ReactNode }) {
       <aside className="supplier-shell-sidebar">
         <div className="px-5 pt-5">
           <Link href="/" className="flex items-center gap-3 rounded-[1.4rem] px-2 py-2">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-950/20">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--supplier-primary)] text-slate-950 shadow-lg shadow-emerald-950/20">
               <BarChart3 size={23} strokeWidth={3} />
             </div>
             <div>
-              <p className="text-lg font-black tracking-tight text-slate-950 dark:text-white">ORDR</p>
-              <p className="-mt-1 text-xs font-black uppercase tracking-[0.22em] text-emerald-600 dark:text-emerald-300">
+              <p className="text-lg font-black tracking-tight text-[var(--supplier-text)]">ORDR</p>
+              <p className="-mt-1 text-xs font-black uppercase tracking-[0.22em] text-[var(--supplier-primary-strong)] dark:text-[var(--supplier-primary)]">
                 Suppliers
               </p>
             </div>
@@ -192,23 +186,23 @@ export function SupplierShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => setCompanyModalOpen(true)}
-            className="mt-5 w-full rounded-[1.35rem] border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/60 dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-emerald-400/30 dark:hover:bg-emerald-400/10"
+            className="mt-5 w-full rounded-[1.35rem] border border-[var(--supplier-border)] bg-[var(--supplier-card-muted)] p-4 text-left transition hover:border-emerald-300"
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-200">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--supplier-card-solid)] text-[var(--supplier-muted)] dark:bg-white/10">
                   <Building2 size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-slate-950 dark:text-white">
+                  <p className="truncate text-sm font-black text-[var(--supplier-text)]">
                     {currentCompany?.name || 'Fornecedor'}
                   </p>
-                  <p className="mt-0.5 text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
+                  <p className="mt-0.5 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--supplier-muted)]">
                     empresa ativa
                   </p>
                 </div>
               </div>
-              <ChevronDown size={16} className="shrink-0 text-slate-400" />
+              <ChevronDown size={16} className="shrink-0 text-[var(--supplier-muted)]" />
             </div>
           </button>
         </div>
@@ -224,8 +218,8 @@ export function SupplierShell({ children }: { children: ReactNode }) {
                 href={item.href}
                 className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black transition ${
                   active
-                    ? 'bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-950/10'
-                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-white'
+                    ? 'bg-[var(--supplier-primary)] text-slate-950 shadow-lg shadow-emerald-950/10'
+                    : 'text-[var(--supplier-muted)] hover:bg-[var(--supplier-card-muted)] hover:text-[var(--supplier-text)]'
                 }`}
               >
                 <Icon size={18} strokeWidth={active ? 3 : 2.3} />
@@ -239,7 +233,7 @@ export function SupplierShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={toggleTheme}
-            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
+            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black text-[var(--supplier-muted)] transition hover:bg-[var(--supplier-card-muted)] hover:text-[var(--supplier-text)]"
           >
             {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             {darkMode ? 'Tema claro' : 'Tema escuro'}
@@ -248,7 +242,7 @@ export function SupplierShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black text-red-500 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-400/10"
+            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black text-red-500 transition hover:bg-red-500/10"
           >
             <LogOut size={18} />
             Sair
@@ -262,19 +256,15 @@ export function SupplierShell({ children }: { children: ReactNode }) {
 
       {companyModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xl">
-          <div className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-5 text-slate-950 shadow-2xl dark:border-white/10 dark:bg-slate-950 dark:text-white">
+          <div className="w-full max-w-lg rounded-[2rem] border border-[var(--supplier-border)] bg-[var(--supplier-card-solid)] p-5 text-[var(--supplier-text)] shadow-2xl">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-500">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--supplier-primary-strong)] dark:text-[var(--supplier-primary)]">
                   Trocar empresa
                 </p>
                 <h2 className="mt-1 text-2xl font-black">Escolha a empresa ativa</h2>
               </div>
-              <button
-                type="button"
-                onClick={() => setCompanyModalOpen(false)}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-black hover:bg-slate-100 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/10"
-              >
+              <button type="button" onClick={() => setCompanyModalOpen(false)} className="supplier-button">
                 Fechar
               </button>
             </div>
@@ -292,19 +282,19 @@ export function SupplierShell({ children }: { children: ReactNode }) {
                     disabled={active || switchingCompanyId === company.id}
                     className={`w-full rounded-2xl border p-4 text-left transition disabled:cursor-default ${
                       active
-                        ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-400/30 dark:bg-emerald-400/10'
-                        : 'border-slate-200 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50/60 dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-emerald-400/30 dark:hover:bg-emerald-400/10'
+                        ? 'border-emerald-300 bg-emerald-500/10'
+                        : 'border-[var(--supplier-border)] bg-[var(--supplier-card-muted)] hover:border-emerald-300'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="font-black">{company.name}</p>
-                        <p className="mt-1 text-xs font-bold text-slate-500 dark:text-slate-400">
+                        <p className="mt-1 text-xs font-bold text-[var(--supplier-muted)]">
                           {supplier ? 'Fornecedor' : 'Operação ORDR'}
                         </p>
                       </div>
                       {active ? (
-                        <span className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-black text-white dark:text-slate-950">
+                        <span className="rounded-full bg-[var(--supplier-primary)] px-3 py-1 text-xs font-black text-slate-950">
                           Atual
                         </span>
                       ) : null}

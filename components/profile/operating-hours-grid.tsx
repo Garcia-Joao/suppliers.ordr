@@ -13,6 +13,12 @@ const fallbackDays = [
   { day: 'sun', label: 'Domingo' },
 ] as const
 
+const timeOptions = Array.from({ length: 48 }, (_, index) => {
+  const hour = Math.floor(index / 2)
+  const minute = index % 2 === 0 ? '00' : '30'
+  return `${String(hour).padStart(2, '0')}:${minute}`
+})
+
 type Props = {
   value: OperatingHour[]
   onChange: (value: OperatingHour[]) => void
@@ -55,18 +61,18 @@ export function OperatingHoursGrid({ value, onChange }: Props) {
   }
 
   return (
-    <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-950/70">
+    <section className="supplier-card-flat rounded-[2rem] p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200">
+          <p className="supplier-chip supplier-chip-primary">
             <Clock size={14} />
             Expediente
-          </div>
-          <h2 className="mt-3 text-2xl font-black text-slate-950 dark:text-white">
+          </p>
+          <h2 className="mt-3 text-2xl font-black text-[var(--supplier-text)]">
             Horários de expediente
           </h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
-            Configure quando o fornecedor deve ficar disponível automaticamente.
+          <p className="mt-1 text-sm font-semibold text-[var(--supplier-muted)]">
+            Os horários usam formato 24h, por exemplo 08:00 às 18:00.
           </p>
         </div>
 
@@ -86,16 +92,18 @@ export function OperatingHoursGrid({ value, onChange }: Props) {
             key={item.day}
             className={`rounded-[1.35rem] border p-4 transition ${
               item.enabled
-                ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-400/25 dark:bg-emerald-400/10'
-                : 'border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.04]'
+                ? 'border-emerald-300/60 bg-emerald-500/10'
+                : 'border-[var(--supplier-border)] bg-[var(--supplier-card-muted)]'
             }`}
           >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-black text-slate-950 dark:text-white">{item.label}</p>
-                <p className={`mt-1 text-[11px] font-black uppercase tracking-[0.14em] ${
-                  item.enabled ? 'text-emerald-700 dark:text-emerald-200' : 'text-slate-400'
-                }`}>
+                <p className="text-sm font-black text-[var(--supplier-text)]">{item.label}</p>
+                <p
+                  className={`mt-1 text-[11px] font-black uppercase tracking-[0.14em] ${
+                    item.enabled ? 'text-[var(--supplier-primary-strong)] dark:text-[var(--supplier-primary)]' : 'text-[var(--supplier-muted)]'
+                  }`}
+                >
                   {item.enabled ? 'Aberto' : 'Fechado'}
                 </p>
               </div>
@@ -107,36 +115,46 @@ export function OperatingHoursGrid({ value, onChange }: Props) {
                   onChange={(event) => updateDay(item.day, { enabled: event.target.checked })}
                   className="peer sr-only"
                 />
-                <span className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-emerald-400 dark:bg-slate-700" />
+                <span className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-[var(--supplier-primary)] dark:bg-slate-700" />
                 <span className="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
               </label>
             </div>
 
             <div className="mt-4 grid gap-2">
               <label className="block">
-                <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--supplier-muted)]">
                   Início
                 </span>
-                <input
-                  type="time"
+                <select
                   value={item.startTime}
                   disabled={!item.enabled}
                   onChange={(event) => updateDay(item.day, { startTime: event.target.value })}
                   className="supplier-field px-3 py-2 text-sm disabled:opacity-45"
-                />
+                >
+                  {timeOptions.map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--supplier-muted)]">
                   Fim
                 </span>
-                <input
-                  type="time"
+                <select
                   value={item.endTime}
                   disabled={!item.enabled}
                   onChange={(event) => updateDay(item.day, { endTime: event.target.value })}
                   className="supplier-field px-3 py-2 text-sm disabled:opacity-45"
-                />
+                >
+                  {timeOptions.map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
           </article>

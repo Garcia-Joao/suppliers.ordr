@@ -2,242 +2,231 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import {
-  ArrowRight,
-  AlertTriangle,
-  CalendarClock,
-  CheckCircle2,
-  Copy,
-  Loader2,
-  PackageSearch,
-  Power,
-  ShieldCheck,
-  Sparkles,
-  TableProperties,
-  Wifi,
-  WifiOff,
-} from 'lucide-react'
-import { SupplierShell } from '@/components/layout/supplier-shell'
 import { supplierApi, type DashboardData } from '@/lib/api'
-
-function money(value: number) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-function todayLabel(data: DashboardData | null) {
-  const today = data?.onlineStatus.today
-  if (!today) return 'Sem horário cadastrado hoje'
-  if (!today.enabled) return 'Fechado hoje'
-  return `${today.startTime} às ${today.endTime}`
-}
-
-function onlineReason(data: DashboardData | null) {
-  if (!data) return 'Carregando disponibilidade...'
-  if (!data.supplier.onlineEnabled) return 'O fornecedor está pausado manualmente.'
-  if (!data.onlineStatus.insideOperatingHours) return 'Fora do horário de expediente configurado.'
-  return 'Disponível para operações e futuras solicitações.'
-}
+import {
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  Clock,
+  Globe2,
+  Loader2,
+  Package,
+  RadioTower,
+  RefreshCw,
+  Table2,
+  ToggleLeft,
+  ToggleRight,
+} from 'lucide-react'
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [savingOnline, setSavingOnline] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
-  async function load() {
+  const supplier = data?.supplier
+  const onlineStatus = data?.onlineStatus || supplier?.onlineStatus
+  const isOnline = Boolean(onlineStatus?.isOnline)
+  const isEnabled = Boolean(onlineStatus?.onlineEnabled ?? supplier?.onlineEnabled)
+  const insideHours = Boolean(onlineStatus?.insideOperatingHours)
+
+  const todayLabel = useMemo(() => {
+    const today = onlineStatus?.today
+    if (!today) return 'Hoje'
+    return today.enabled ? `${today.startTime} às ${today.endTime}` : 'Fechado'
+  }, [onlineStatus])
+
+  useEffect(() => {
+    loadDashboard()
+  }, [])
+
+  async function loadDashboard() {
     setLoading(true)
+    setError('')
+
     try {
-      setData(await supplierApi.dashboard())
+      const result = await supplierApi.dashboard()
+      setData(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dashboard.')
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    load().catch(() => setLoading(false))
-  }, [])
+  async function toggleAvailability() {
+    if (!supplier) return
 
-  const isOnline = Boolean(data?.onlineStatus.isOnline)
+    setSaving(true)
+    setError('')
 
-  const stats = useMemo(() => {
-    if (!data) return []
-    return [
-      { label: 'Produtos', value: String(data.productCount), icon: PackageSearch, href: '/produtos' },
-      { label: 'Tabelas ativas', value: String(data.activePriceTables), icon: TableProperties, href: '/tabelas' },
-      { label: 'Vinculados ao estoque', value: String(data.linkedProducts), icon: CheckCircle2, href: '/produtos' },
-      { label: 'Estoque baixo', value: String(data.lowStockProducts ?? 0), icon: AlertTriangle, href: '/produtos' },
-    ]
-  }, [data])
-
-  async function toggleOnline() {
-    if (!data) return
-    setSavingOnline(true)
     try {
-      const result = await supplierApi.updateAvailability(!data.supplier.onlineEnabled)
-      setData((current) => current ? {
-        ...current,
-        supplier: result.supplier,
-        onlineStatus: result.supplier.onlineStatus,
-      } : current)
+      const result = await supplierApi.updateAvailability(!supplier.onlineEnabled)
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              supplier: result.supplier,
+              onlineStatus: result.supplier.onlineStatus,
+            }
+          : current
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao alterar disponibilidade.')
     } finally {
-      setSavingOnline(false)
+      setSaving(false)
     }
   }
 
-  async function copyCode() {
-    const code = data?.supplier.ordrCode
-    if (!code) return
-    await navigator.clipboard.writeText(code)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1500)
+  if (loading) {
+    return (
+      <div className="supplier-page grid min-h-[60vh] place-items-center">
+        <div className="supplier-card rounded-[2rem] px-6 py-5">
+          <Loader2 className="mx-auto size-8 animate-spin text-[var(--supplier-primary)]" />
+          <p className="mt-3 text-sm font-black text-[var(--supplier-muted)]">Carregando dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <SupplierShell>
-      <div className="space-y-4 pb-24 lg:pb-0">
-        <section className="ordr-panel relative overflow-hidden rounded-[2rem] p-5 md:p-8">
-          <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-primary/20 blur-3xl" />
-          <div className="pointer-events-none absolute -left-24 bottom-0 size-80 rounded-full bg-accent/10 blur-3xl" />
-
-          <div className="relative grid gap-5 xl:grid-cols-[1.05fr_0.95fr] xl:items-stretch">
-            <div className="flex min-h-[360px] flex-col justify-between">
-              <div>
-                <span className="ordr-kicker"><Sparkles className="size-3.5" /> Dashboard</span>
-                <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight md:text-6xl">
-                  Painel do fornecedor
-                </h1>
-                <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-muted-foreground md:text-lg">
-                  Gerencie disponibilidade, catálogo e tabelas de preço com a identidade visual do ORDR.
-                </p>
-              </div>
-
-              {loading ? (
-                <div className="mt-8 inline-flex w-fit items-center gap-2 rounded-2xl border bg-background/70 px-4 py-3 text-sm font-black text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin text-primary" /> Carregando informações...
-                </div>
-              ) : data ? (
-                <div className="mt-8 flex flex-wrap items-center gap-3">
-                  <button onClick={toggleOnline} disabled={savingOnline} className={isOnline ? 'ordr-button-primary' : 'ordr-button-soft'}>
-                    {savingOnline ? <Loader2 className="size-4 animate-spin" /> : <Power className="size-4" />}
-                    {data.supplier.onlineEnabled ? 'Pausar online' : 'Disponibilizar online'}
-                  </button>
-                  <button onClick={copyCode} className="ordr-button-soft">
-                    <Copy className="size-4" /> Código ORDR: {data.supplier.ordrCode ?? '—'}
-                  </button>
-                  {copied ? <span className="text-sm font-black text-primary">Copiado!</span> : null}
-                </div>
-              ) : null}
+    <div className="supplier-page space-y-6">
+      <section className="supplier-card overflow-hidden rounded-[2rem]">
+        <div className="relative p-5 md:p-8">
+          <div className="pointer-events-none absolute right-0 top-0 h-56 w-56 rounded-full bg-emerald-300/20 blur-3xl" />
+          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <p className="supplier-chip supplier-chip-primary">
+                <BarChart3 size={14} />
+                Dashboard
+              </p>
+              <h1 className="mt-4 text-3xl font-black tracking-tight md:text-5xl">
+                Olá, {supplier?.name || 'fornecedor'}
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-[var(--supplier-muted)]">
+                Acompanhe disponibilidade, tabelas, produtos e estoque do seu painel ORDR Suppliers.
+              </p>
             </div>
 
-            <div className={isOnline ? 'relative overflow-hidden rounded-[2rem] border border-primary/35 bg-primary/12 p-5 shadow-[0_26px_80px_color-mix(in_oklch,var(--primary)_18%,transparent)]' : 'relative overflow-hidden rounded-[2rem] border bg-background/65 p-5'}>
-              <div className={isOnline ? 'pointer-events-none absolute -right-16 -top-16 size-52 rounded-full bg-primary/35 blur-3xl' : 'pointer-events-none absolute -right-16 -top-16 size-52 rounded-full bg-muted/55 blur-3xl'} />
-              <div className="relative flex h-full min-h-[330px] flex-col justify-between">
-                <div>
-                  <div className="mb-5 flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Status atual</p>
-                      <h2 className={isOnline ? 'mt-2 text-5xl font-black tracking-tight text-primary' : 'mt-2 text-5xl font-black tracking-tight'}>
-                        {isOnline ? 'Online' : 'Offline'}
-                      </h2>
-                    </div>
-                    <div className={isOnline ? 'relative grid size-16 place-items-center rounded-3xl bg-primary text-primary-foreground shadow-lg shadow-primary/25' : 'grid size-16 place-items-center rounded-3xl bg-muted text-muted-foreground'}>
-                      {isOnline ? <span className="absolute inset-0 animate-ping rounded-3xl bg-primary/35" /> : null}
-                      {isOnline ? <Wifi className="relative size-8" /> : <WifiOff className="size-8" />}
-                    </div>
-                  </div>
+            <button type="button" onClick={loadDashboard} className="supplier-button">
+              <RefreshCw size={17} />
+              Atualizar
+            </button>
+          </div>
+        </div>
+      </section>
 
-                  <div className="rounded-[1.5rem] border bg-background/70 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className={isOnline ? 'grid size-10 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary' : 'grid size-10 shrink-0 place-items-center rounded-2xl bg-muted text-muted-foreground'}>
-                        <ShieldCheck className="size-5" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-black">{onlineReason(data)}</p>
-                        <p className="mt-1 text-xs font-bold text-muted-foreground">
-                          Status final = botão online + horário do dia.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+      {error ? <div className="rounded-2xl border border-red-300/30 bg-red-500/10 px-4 py-3 text-sm font-black text-red-600 dark:text-red-200">{error}</div> : null}
 
-                <div className="mt-5 grid gap-3 text-sm font-bold md:grid-cols-2">
-                  <div className="rounded-2xl border bg-card/55 p-4">
-                    <span className="text-muted-foreground">Disponibilizado</span>
-                    <p className="mt-1 text-lg font-black">{data?.supplier.onlineEnabled ? 'Sim' : 'Não'}</p>
-                  </div>
-                  <div className="rounded-2xl border bg-card/55 p-4">
-                    <span className="text-muted-foreground">Expediente</span>
-                    <p className="mt-1 text-lg font-black">{data?.onlineStatus.insideOperatingHours ? 'Aberto' : 'Fechado'}</p>
-                  </div>
-                  <div className="rounded-2xl border bg-card/55 p-4 md:col-span-2">
-                    <span className="text-muted-foreground">Hoje</span>
-                    <p className="mt-1 text-lg font-black">{todayLabel(data)}</p>
-                  </div>
-                </div>
+      <section className={`rounded-[2rem] border p-5 shadow-sm ${isOnline ? 'border-emerald-300/70 bg-emerald-500/10' : 'border-[var(--supplier-border)] bg-[var(--supplier-card)]'}`}>
+        <div className="grid gap-5 xl:grid-cols-[1fr_auto] xl:items-center">
+          <div className="flex items-start gap-4">
+            <div className={`grid size-14 shrink-0 place-items-center rounded-2xl ${isOnline ? 'bg-[var(--supplier-primary)] text-slate-950' : 'bg-[var(--supplier-card-muted)] text-[var(--supplier-muted)]'}`}>
+              <RadioTower size={26} />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--supplier-muted)]">Status atual</p>
+              <h2 className="mt-1 text-3xl font-black">{isOnline ? 'Online' : 'Offline'}</h2>
+              <p className="mt-2 text-sm font-semibold text-[var(--supplier-muted)]">
+                Status final = botão online/offline + horário do dia.
+              </p>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <MiniStatus label="Disponibilizado" value={isEnabled ? 'Sim' : 'Não'} active={isEnabled} />
+                <MiniStatus label="Expediente" value={insideHours ? 'Aberto' : 'Fechado'} active={insideHours} />
+                <MiniStatus label="Hoje" value={todayLabel} active={insideHours} />
               </div>
             </div>
           </div>
-        </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {stats.map((stat) => {
-            const Icon = stat.icon
-            return (
-              <Link key={stat.label} href={stat.href} className="ordr-panel group rounded-[1.75rem] p-5 transition hover:-translate-y-1 hover:border-primary">
-                <div className="mb-6 flex items-center justify-between">
-                  <div className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary">
-                    <Icon className="size-5" />
-                  </div>
-                  <ArrowRight className="size-4 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" />
-                </div>
-                <p className="text-sm font-black text-muted-foreground">{stat.label}</p>
-                <p className="mt-2 text-3xl font-black tracking-tight">{stat.value}</p>
-              </Link>
-            )
-          })}
-        </section>
+          <button
+            type="button"
+            onClick={toggleAvailability}
+            disabled={saving}
+            className={isEnabled ? 'supplier-button min-w-56' : 'supplier-button-primary min-w-56'}
+          >
+            {saving ? <Loader2 className="size-4 animate-spin" /> : isEnabled ? <ToggleRight size={19} /> : <ToggleLeft size={19} />}
+            {isEnabled ? 'Pausar painel' : 'Disponibilizar online'}
+          </button>
+        </div>
+      </section>
 
-        <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="ordr-panel rounded-[2rem] p-5">
-            <h2 className="text-xl font-black">Categorias vendidas</h2>
-            <p className="mt-1 text-sm font-bold text-muted-foreground">Use categorias para facilitar a busca do fornecedor na gestão.</p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {(data?.categories?.length ? data.categories : ['Sem categorias']).map((category) => (
-                <span key={category} className="rounded-full border bg-background/70 px-3 py-2 text-xs font-black uppercase tracking-wide text-muted-foreground">
-                  {category}
-                </span>
-              ))}
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard icon={<Package size={20} />} label="Produtos" value={data?.productCount ?? 0} href="/produtos" />
+        <MetricCard icon={<Table2 size={20} />} label="Tabelas ativas" value={data?.activePriceTables ?? 0} href="/tabelas" />
+        <MetricCard icon={<Globe2 size={20} />} label="Produtos vinculados" value={data?.linkedProducts ?? 0} href="/produtos" />
+        <MetricCard icon={<AlertTriangle size={20} />} label="Estoque baixo" value={data?.lowStockProducts ?? 0} href="/produtos" warning={(data?.lowStockProducts ?? 0) > 0} />
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="supplier-card-flat rounded-[2rem] p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="supplier-chip">
+                <Clock size={14} />
+                Próximas ações
+              </p>
+              <h2 className="mt-3 text-2xl font-black">Resumo operacional</h2>
             </div>
           </div>
 
-          <div className="ordr-panel rounded-[2rem] p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-black">Próximos pedidos</h2>
-                <p className="mt-1 text-sm font-bold text-muted-foreground">Pausado por enquanto, mas a área já está reservada.</p>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {(data?.highlights?.length ? data.highlights : [
+              { label: 'Código ORDR', value: supplier?.ordrCode || '—' },
+              { label: 'Categorias', value: (data?.categories || []).join(', ') || 'Não informado' },
+              { label: 'Pedidos', value: 'Em breve' },
+              { label: 'Receita', value: 'Em breve' },
+            ]).map((item) => (
+              <div key={item.label} className="rounded-2xl border border-[var(--supplier-border)] bg-[var(--supplier-card-muted)] p-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--supplier-muted)]">{item.label}</p>
+                <p className="mt-2 text-lg font-black">{item.value}</p>
               </div>
-              <Link href="/pedidos" className="ordr-button-soft">Ver pedidos</Link>
-            </div>
-            <div className="mt-5 grid gap-3">
-              {(data?.recentOrders?.length ? data.recentOrders : []).slice(0, 3).map((order) => (
-                <div key={order.id} className="rounded-2xl border bg-background/65 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-black">{order.code}</p>
-                    <span className="text-sm font-black text-primary">{money(order.total)}</span>
-                  </div>
-                  <p className="mt-1 text-sm font-bold text-muted-foreground">{order.items.length} item(ns)</p>
-                </div>
-              ))}
-              {!data?.recentOrders?.length ? (
-                <div className="rounded-2xl border border-dashed bg-background/55 p-6 text-center text-sm font-bold text-muted-foreground">
-                  Nenhum pedido recente para exibir agora.
-                </div>
-              ) : null}
-            </div>
+            ))}
           </div>
-        </section>
+        </div>
+
+        <div className="supplier-card-flat rounded-[2rem] p-5">
+          <p className="supplier-chip">Atalhos</p>
+          <div className="mt-5 space-y-3">
+            <Shortcut href="/produtos" label="Cadastrar produtos" />
+            <Shortcut href="/tabelas" label="Editar tabelas de preço" />
+            <Shortcut href="/perfil" label="Ajustar horários e visibilidade" />
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function MiniStatus({ label, value, active }: { label: string; value: string; active: boolean }) {
+  return (
+    <div className={`rounded-2xl border p-3 ${active ? 'border-emerald-300/60 bg-emerald-500/10' : 'border-[var(--supplier-border)] bg-[var(--supplier-card-muted)]'}`}>
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--supplier-muted)]">{label}</p>
+      <p className="mt-1 text-sm font-black">{value}</p>
+    </div>
+  )
+}
+
+function MetricCard({ icon, label, value, href, warning = false }: { icon: React.ReactNode; label: string; value: number; href: string; warning?: boolean }) {
+  return (
+    <Link href={href} className={`supplier-card-flat block rounded-[2rem] p-5 transition hover:-translate-y-1 ${warning ? 'border-amber-300/70 bg-amber-500/10' : ''}`}>
+      <div className="flex items-center justify-between">
+        <span className={`grid size-11 place-items-center rounded-2xl ${warning ? 'bg-amber-500/15 text-amber-600 dark:text-amber-200' : 'bg-emerald-500/10 text-[var(--supplier-primary-strong)] dark:text-[var(--supplier-primary)]'}`}>
+          {icon}
+        </span>
+        <ArrowRight size={18} className="text-[var(--supplier-muted)]" />
       </div>
-    </SupplierShell>
+      <p className="mt-4 text-xs font-black uppercase tracking-[0.16em] text-[var(--supplier-muted)]">{label}</p>
+      <p className="mt-2 text-3xl font-black">{value}</p>
+    </Link>
+  )
+}
+
+function Shortcut({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href} className="flex items-center justify-between rounded-2xl border border-[var(--supplier-border)] bg-[var(--supplier-card-muted)] px-4 py-3 text-sm font-black transition hover:border-emerald-300">
+      {label}
+      <ArrowRight size={17} />
+    </Link>
   )
 }
