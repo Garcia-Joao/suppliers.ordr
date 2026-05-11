@@ -185,6 +185,7 @@ export type PriceTablePayload = {
 export type PriceTableItemPayload = {
   itemName: string
   sku?: string | null
+  category?: string | null
   unit: string
   quantity: number | string
   unitPrice: number | string

@@ -10,7 +10,7 @@ function money(value: number) {
 }
 
 const emptyTableForm: PriceTablePayload = { name: '', description: '', active: true, validFrom: '', validUntil: '' }
-const emptyItemForm: PriceTableItemPayload = { itemName: '', sku: '', unit: 'un.', quantity: '1', unitPrice: '0', notes: '' }
+const emptyItemForm: PriceTableItemPayload = { itemName: '', sku: '', category: '', unit: 'un.', quantity: '1', unitPrice: '0', notes: '' }
 
 export default function TabelasPage() {
   const [tables, setTables] = useState<SupplierPriceTable[]>([])
@@ -67,6 +67,7 @@ export default function TabelasPage() {
     setItemForm({
       itemName: item.name ?? item.itemName,
       sku: item.sku ?? '',
+      category: item.category ?? '',
       unit: item.unit,
       quantity: String(item.quantity),
       unitPrice: String(item.unitPrice),
@@ -189,7 +190,7 @@ export default function TabelasPage() {
                         <tr key={item.id} className="border-t">
                           <td className="px-4 py-3">
                             <p className="font-black">{item.name}</p>
-                            <p className="text-xs font-bold text-muted-foreground">{item.notes || item.category || '—'}</p>
+                            <p className="text-xs font-bold text-muted-foreground">{item.category || item.notes || '—'}</p>
                           </td>
                           <td className="px-4 py-3 font-bold text-muted-foreground">{item.sku || '—'}</td>
                           <td className="px-4 py-3 font-bold">{item.quantity} {item.unit}</td>
@@ -244,11 +245,12 @@ export default function TabelasPage() {
               <ModalHeader title={itemModal.item ? 'Editar item' : `Novo item em ${itemModal.table.name}`} onClose={() => setItemModal(null)} />
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Nome do item</span><input className="ordr-input" value={itemForm.itemName} onChange={(e) => setItemForm((f) => ({ ...f, itemName: e.target.value }))} required /></label>
-                <label className="space-y-2"><span className="text-sm font-black">SKU</span><input className="ordr-input" value={itemForm.sku ?? ''} onChange={(e) => setItemForm((f) => ({ ...f, sku: e.target.value }))} /></label>
+                <label className="space-y-2"><span className="text-sm font-black">SKU / Código interno</span><input className="ordr-input" value={itemForm.sku ?? ''} onChange={(e) => setItemForm((f) => ({ ...f, sku: e.target.value.toUpperCase() }))} placeholder="Ex: COCA-2L" /></label>
+                <label className="space-y-2"><span className="text-sm font-black">Categoria</span><input className="ordr-input" value={itemForm.category ?? ''} onChange={(e) => setItemForm((f) => ({ ...f, category: e.target.value }))} placeholder="Bebidas, Carnes, Limpeza..." /></label>
                 <label className="space-y-2"><span className="text-sm font-black">Unidade</span><input className="ordr-input" value={itemForm.unit} onChange={(e) => setItemForm((f) => ({ ...f, unit: e.target.value }))} /></label>
                 <label className="space-y-2"><span className="text-sm font-black">Quantidade</span><input type="number" step="0.001" className="ordr-input" value={itemForm.quantity} onChange={(e) => setItemForm((f) => ({ ...f, quantity: e.target.value }))} /></label>
                 <label className="space-y-2"><span className="text-sm font-black">Preço unitário</span><input type="number" step="0.01" className="ordr-input" value={itemForm.unitPrice} onChange={(e) => setItemForm((f) => ({ ...f, unitPrice: e.target.value }))} /></label>
-                <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Observações</span><textarea className="ordr-input" value={itemForm.notes ?? ''} onChange={(e) => setItemForm((f) => ({ ...f, notes: e.target.value }))} /></label>
+                <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Informações do item</span><textarea className="ordr-input min-h-28" value={itemForm.notes ?? ''} onChange={(e) => setItemForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Marca, embalagem, validade média, observações de entrega..." /></label>
               </div>
               <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setItemModal(null)} className="ordr-button-soft">Cancelar</button><button className="ordr-button-primary" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null}Salvar</button></div>
             </form>

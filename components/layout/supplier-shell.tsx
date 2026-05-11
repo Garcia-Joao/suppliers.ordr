@@ -48,6 +48,11 @@ function companyTypeLabel(company: SupplierAuthCompany) {
   return isSupplierCompany(company) ? 'Fornecedor' : 'Operação'
 }
 
+function isActivePath(pathname: string, href: string) {
+  if (href === '/') return pathname === '/'
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
 export function SupplierShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const { theme, toggleTheme } = useTheme()
@@ -154,123 +159,123 @@ export function SupplierShell({ children }: { children: ReactNode }) {
   if (!session) return null
 
   return (
-    <div className="min-h-screen p-3 md:p-5">
-      <div className="mx-auto grid max-w-[1540px] gap-4 lg:grid-cols-[300px_1fr]">
-        <aside className="glass-card sticky top-5 hidden h-[calc(100vh-2.5rem)] rounded-[2rem] p-4 lg:block">
-          <div className="mb-6 flex items-center justify-between gap-3 px-2 pt-2">
-            <SuppliersBrand />
-            <button
-              onClick={toggleTheme}
-              className="grid size-10 place-items-center rounded-2xl border bg-background/60 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-              title={theme === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'}
-            >
-              {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
-            </button>
-          </div>
-
+    <div className="min-h-screen lg:pl-[308px]">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[292px] border-r bg-background/96 p-4 shadow-[18px_0_60px_rgba(0,0,0,0.18)] backdrop-blur-xl lg:flex lg:flex-col">
+        <div className="mb-5 flex items-center justify-between gap-3 rounded-[1.5rem] border bg-secondary/45 px-3 py-3">
+          <SuppliersBrand />
           <button
-            type="button"
-            onClick={() => hasMultipleCompanies ? setCompanyModalOpen(true) : undefined}
-            className={clsx(
-              'mb-5 w-full rounded-[1.5rem] border bg-background/55 p-4 text-left transition',
-              hasMultipleCompanies ? 'hover:-translate-y-0.5 hover:border-primary hover:bg-secondary/60' : 'cursor-default'
-            )}
+            onClick={toggleTheme}
+            className="grid size-10 place-items-center rounded-2xl border bg-background/75 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+            title={theme === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'}
           >
-            <div className="mb-3 flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-2xl bg-primary/15 text-primary">
-                <Building2 className="size-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-black">{session.supplierName}</p>
-                <p className="text-xs font-bold text-muted-foreground">Empresa ativa</p>
-              </div>
-              {hasMultipleCompanies ? <RefreshCw className="size-4 text-muted-foreground" /> : null}
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-primary">
-                Fornecedor
-              </span>
-              {hasMultipleCompanies ? (
-                <span className="text-xs font-black text-muted-foreground">Trocar</span>
-              ) : null}
-            </div>
+            {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </button>
+        </div>
 
-          <nav className="space-y-2">
-            {nav.map((item) => {
-              const Icon = item.icon
-              const active = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={clsx(
-                    'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black transition',
-                    active
-                      ? 'bg-primary text-primary-foreground shadow-lg shadow-emerald-500/20'
-                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                  )}
-                >
-                  <Icon className="size-4" /> {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-
-          <div className="absolute inset-x-4 bottom-4 space-y-2 rounded-3xl border bg-background/60 p-4">
+        <button
+          type="button"
+          onClick={() => hasMultipleCompanies ? setCompanyModalOpen(true) : undefined}
+          className={clsx(
+            'mb-4 w-full rounded-[1.5rem] border bg-primary/8 p-4 text-left transition',
+            hasMultipleCompanies ? 'hover:-translate-y-0.5 hover:border-primary hover:bg-primary/12' : 'cursor-default'
+          )}
+        >
+          <div className="mb-3 flex items-center gap-3">
+            <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary">
+              <Building2 className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-black">{session.supplierName}</p>
+              <p className="text-xs font-bold text-muted-foreground">Empresa ativa</p>
+            </div>
+            {hasMultipleCompanies ? <RefreshCw className="size-4 shrink-0 text-muted-foreground" /> : null}
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-primary">
+              Fornecedor
+            </span>
             {hasMultipleCompanies ? (
-              <button
-                onClick={() => setCompanyModalOpen(true)}
-                className="ordr-button-soft w-full"
+              <span className="text-xs font-black text-muted-foreground">Trocar</span>
+            ) : null}
+          </div>
+        </button>
+
+        <nav className="space-y-1.5">
+          {nav.map((item) => {
+            const Icon = item.icon
+            const active = isActivePath(pathname, item.href)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={clsx(
+                  'group relative flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black transition',
+                  active
+                    ? 'bg-primary text-primary-foreground shadow-lg shadow-emerald-500/20'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                )}
               >
-                <RefreshCw className="size-4" /> Trocar empresa
+                {active ? <span className="absolute -left-4 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-primary" /> : null}
+                <Icon className="size-4 shrink-0" />
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
+        </nav>
+
+        <div className="mt-auto space-y-2 rounded-3xl border bg-secondary/40 p-4">
+          {hasMultipleCompanies ? (
+            <button
+              onClick={() => setCompanyModalOpen(true)}
+              className="ordr-button-soft w-full"
+            >
+              <RefreshCw className="size-4" /> Trocar empresa
+            </button>
+          ) : null}
+          <button onClick={logout} className="ordr-button-soft w-full text-muted-foreground">
+            <LogOut className="size-4" /> Sair
+          </button>
+        </div>
+      </aside>
+
+      <main className="min-w-0 p-3 md:p-5">
+        <header className="glass-card sticky top-3 z-20 mb-4 flex items-center justify-between rounded-[1.75rem] px-4 py-3 lg:hidden">
+          <SuppliersBrand compact />
+          <div className="flex items-center gap-2">
+            {hasMultipleCompanies ? (
+              <button onClick={() => setCompanyModalOpen(true)} className="rounded-2xl border px-3 py-2 text-sm font-black">
+                Trocar
               </button>
             ) : null}
-            <button onClick={logout} className="ordr-button-soft w-full text-muted-foreground">
-              <LogOut className="size-4" /> Sair
+            <button onClick={toggleTheme} className="rounded-2xl border px-3 py-2 text-sm font-black">
+              {theme === 'dark' ? 'Claro' : 'Escuro'}
             </button>
+            <button onClick={logout} className="rounded-2xl border px-3 py-2 text-sm font-black">Sair</button>
           </div>
-        </aside>
+        </header>
 
-        <main className="min-w-0">
-          <header className="glass-card sticky top-3 z-20 mb-4 flex items-center justify-between rounded-[1.75rem] px-4 py-3 lg:hidden">
-            <SuppliersBrand compact />
-            <div className="flex items-center gap-2">
-              {hasMultipleCompanies ? (
-                <button onClick={() => setCompanyModalOpen(true)} className="rounded-2xl border px-3 py-2 text-sm font-black">
-                  Trocar
-                </button>
-              ) : null}
-              <button onClick={toggleTheme} className="rounded-2xl border px-3 py-2 text-sm font-black">
-                {theme === 'dark' ? 'Claro' : 'Escuro'}
-              </button>
-              <button onClick={logout} className="rounded-2xl border px-3 py-2 text-sm font-black">Sair</button>
-            </div>
-          </header>
+        {children}
 
-          {children}
-
-          <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 gap-2 rounded-[1.5rem] border bg-background/90 p-2 backdrop-blur lg:hidden">
-            {nav.map((item) => {
-              const Icon = item.icon
-              const active = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={clsx(
-                    'grid place-items-center rounded-2xl p-2 text-xs font-black',
-                    active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-                  )}
-                >
-                  <Icon className="mb-1 size-4" />
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-        </main>
-      </div>
+        <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 gap-2 rounded-[1.5rem] border bg-background/90 p-2 backdrop-blur lg:hidden">
+          {nav.map((item) => {
+            const Icon = item.icon
+            const active = isActivePath(pathname, item.href)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={clsx(
+                  'grid place-items-center rounded-2xl p-2 text-xs font-black',
+                  active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                )}
+              >
+                <Icon className="mb-1 size-4" />
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+      </main>
 
       {companyModalOpen ? (
         <div className="modal-backdrop">
