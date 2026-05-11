@@ -217,3 +217,29 @@ select.field { appearance: none; }
   overflow: auto;
   border-radius: 2rem;
 }
+
+.input-supplier {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.92);
+  padding: 0.85rem 1rem;
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 700;
+  outline: none;
+}
+
+.input-supplier::placeholder {
+  color: rgba(148, 163, 184, 0.65);
+}
+
+.input-supplier:focus {
+  border-color: rgba(52, 211, 153, 0.55);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+}
+
+.input-supplier option {
+  background: #020617;
+  color: white;
+}

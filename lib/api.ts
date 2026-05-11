@@ -195,6 +195,7 @@ export type SupplierProfile = {
   active: boolean
   ordrCode?: string | null
   onlineEnabled: boolean
+  publicListingEnabled: boolean
   automaticAvailability?: boolean
   operatingHours: OperatingHour[]
   onlineStatus: OnlineStatus
