@@ -58,17 +58,29 @@ export const supplierApi = {
   async updatePriceTable(tableId: string, payload: Partial<PriceTablePayload> & { active?: boolean }) {
     return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}`, json('PATCH', payload))
   },
+  async duplicatePriceTable(tableId: string, payload: DuplicateTablePayload) {
+    return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/duplicate`, json('POST', payload))
+  },
+  async bulkAdjustPriceTablePrices(tableId: string, payload: BulkPriceAdjustmentPayload) {
+    return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/bulk-prices`, json('PATCH', payload))
+  },
   async deletePriceTable(tableId: string) {
     return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}`, json('DELETE'))
   },
   async createPriceTableItem(tableId: string, payload: PriceTableItemPayload) {
     return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items`, json('POST', payload))
   },
+  async createPriceTableItemFromExisting(tableId: string, payload: ExistingProductPayload) {
+    return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/from-product`, json('POST', payload))
+  },
   async updatePriceTableItem(tableId: string, itemId: string, payload: Partial<PriceTableItemPayload>) {
     return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/${itemId}`, json('PATCH', payload))
   },
   async deletePriceTableItem(tableId: string, itemId: string) {
     return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/${itemId}`, json('DELETE'))
+  },
+  async updateItemStock(tableId: string, itemId: string, payload: StockPayload) {
+    return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/${itemId}/stock`, json('PATCH', payload))
   },
   async products() {
     return request<{ products: SupplierProduct[] }>('/supplier-portal/products')
@@ -108,6 +120,7 @@ export type DashboardData = {
   activePriceTables: number
   linkedProducts: number
   productCount: number
+  lowStockProducts?: number
   categories: string[]
   onlineStatus: OnlineStatus
   recentOrders: SupplierOrder[]
@@ -152,6 +165,11 @@ export type SupplierProduct = {
   unitPrice: number
   price: number
   notes?: string | null
+  stockEnabled?: boolean
+  stockQuantity?: number
+  minStockQuantity?: number
+  lowStock?: boolean
+  stockUpdatedAt?: string | null
   linkedStockProductName?: string | null
 }
 
@@ -170,6 +188,7 @@ export type SupplierProfile = {
   active: boolean
   ordrCode?: string | null
   onlineEnabled: boolean
+  automaticAvailability?: boolean
   publicListingEnabled: boolean
   operatingHours: OperatingHour[]
   onlineStatus: OnlineStatus
@@ -191,4 +210,40 @@ export type PriceTableItemPayload = {
   quantity: number | string
   unitPrice: number | string
   notes?: string | null
+  stockEnabled?: boolean
+  stockQuantity?: number | string
+  minStockQuantity?: number | string
+}
+
+export type ExistingProductPayload = {
+  sourceItemId: string
+  itemName?: string | null
+  sku?: string | null
+  category?: string | null
+  unit?: string
+  quantity?: number | string
+  priceAdjustmentPercent?: number | string
+  notes?: string | null
+  stockEnabled?: boolean
+  stockQuantity?: number | string
+  minStockQuantity?: number | string
+}
+
+export type DuplicateTablePayload = {
+  name: string
+  description?: string | null
+  active?: boolean
+  validFrom?: string | null
+  validUntil?: string | null
+  priceAdjustmentPercent?: number | string
+}
+
+export type BulkPriceAdjustmentPayload = {
+  priceAdjustmentPercent: number | string
+}
+
+export type StockPayload = {
+  stockEnabled?: boolean
+  stockQuantity?: number | string
+  minStockQuantity?: number | string
 }

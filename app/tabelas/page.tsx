@@ -1,16 +1,14 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
-import { Edit3, Loader2, Plus, Search, TableProperties, Trash2, X } from 'lucide-react'
+import { FormEvent, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Copy, Edit3, Layers, Loader2, PackagePlus, Plus, Search, SlidersHorizontal, TableProperties, Trash2, X } from 'lucide-react'
 import { SupplierShell } from '@/components/layout/supplier-shell'
-import { supplierApi, type PriceTableItemPayload, type PriceTablePayload, type SupplierPriceTable, type SupplierProduct } from '@/lib/api'
+import { supplierApi, type DuplicateTablePayload, type ExistingProductPayload, type PriceTableItemPayload, type PriceTablePayload, type SupplierPriceTable, type SupplierProduct } from '@/lib/api'
 
-function money(value: number) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
+function money(value: number) { return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }
+const units = ['unit', 'ml', 'l', 'g', 'kg']
 const emptyTableForm: PriceTablePayload = { name: '', description: '', active: true, validFrom: '', validUntil: '' }
-const emptyItemForm: PriceTableItemPayload = { itemName: '', sku: '', category: '', unit: 'un.', quantity: '1', unitPrice: '0', notes: '' }
+const emptyItemForm: PriceTableItemPayload = { itemName: '', sku: '', category: '', unit: 'unit', quantity: '1', unitPrice: '0', notes: '', stockEnabled: false, stockQuantity: '0', minStockQuantity: '0' }
 
 export default function TabelasPage() {
   const [tables, setTables] = useState<SupplierPriceTable[]>([])
@@ -21,251 +19,50 @@ export default function TabelasPage() {
   const [tableForm, setTableForm] = useState<PriceTablePayload>(emptyTableForm)
   const [itemModal, setItemModal] = useState<{ table: SupplierPriceTable; item?: SupplierProduct } | null>(null)
   const [itemForm, setItemForm] = useState<PriceTableItemPayload>(emptyItemForm)
+  const [existingModal, setExistingModal] = useState<{ table: SupplierPriceTable } | null>(null)
+  const [existingForm, setExistingForm] = useState<ExistingProductPayload>({ sourceItemId: '', priceAdjustmentPercent: '0' })
+  const [duplicateModal, setDuplicateModal] = useState<{ table: SupplierPriceTable } | null>(null)
+  const [duplicateForm, setDuplicateForm] = useState<DuplicateTablePayload>({ name: '', active: false, priceAdjustmentPercent: '0' })
+  const [bulkModal, setBulkModal] = useState<{ table: SupplierPriceTable } | null>(null)
+  const [bulkPercent, setBulkPercent] = useState('0')
 
-  async function load() {
-    setLoading(true)
-    try {
-      const result = await supplierApi.priceTables()
-      setTables(result.tables ?? [])
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  async function load() { setLoading(true); try { const result = await supplierApi.priceTables(); setTables(result.tables ?? []) } finally { setLoading(false) } }
   useEffect(() => { load().catch(() => setLoading(false)) }, [])
 
-  const filteredTables = useMemo(() => {
-    const term = query.trim().toLowerCase()
-    if (!term) return tables
-    return tables.filter((table) => {
-      return `${table.name} ${table.description ?? ''} ${table.items.map((item) => item.name).join(' ')}`.toLowerCase().includes(term)
-    })
-  }, [query, tables])
+  const allProducts = useMemo(() => tables.flatMap((table) => table.items.map((item) => ({ ...item, tableId: table.id, tableName: table.name, tableActive: table.active }))), [tables])
+  const filteredTables = useMemo(() => { const term = query.trim().toLowerCase(); if (!term) return tables; return tables.filter((table) => `${table.name} ${table.description ?? ''} ${table.items.map((item) => `${item.name} ${item.sku ?? ''} ${item.category ?? ''}`).join(' ')}`.toLowerCase().includes(term)) }, [query, tables])
 
-  function openCreateTable() {
-    setTableForm(emptyTableForm)
-    setTableModal({ mode: 'create' })
-  }
+  function openCreateTable() { setTableForm(emptyTableForm); setTableModal({ mode: 'create' }) }
+  function openEditTable(table: SupplierPriceTable) { setTableForm({ name: table.name, description: table.description ?? '', active: table.active, validFrom: table.validFrom?.slice(0, 10) ?? '', validUntil: table.validUntil?.slice(0, 10) ?? '' }); setTableModal({ mode: 'edit', table }) }
+  function openCreateItem(table: SupplierPriceTable) { setItemForm(emptyItemForm); setItemModal({ table }) }
+  function openEditItem(table: SupplierPriceTable, item: SupplierProduct) { setItemForm({ itemName: item.name ?? item.itemName, sku: item.sku ?? '', category: item.category ?? '', unit: item.unit, quantity: String(item.quantity), unitPrice: String(item.unitPrice), notes: item.notes ?? '', stockEnabled: Boolean(item.stockEnabled), stockQuantity: String(item.stockQuantity ?? 0), minStockQuantity: String(item.minStockQuantity ?? 0) }); setItemModal({ table, item }) }
+  function openDuplicate(table: SupplierPriceTable) { setDuplicateForm({ name: `${table.name} - cópia`, active: false, priceAdjustmentPercent: '0' }); setDuplicateModal({ table }) }
+  function openExisting(table: SupplierPriceTable) { const first = allProducts.find((product) => product.tableId !== table.id); setExistingForm({ sourceItemId: first?.id ?? '', priceAdjustmentPercent: '0' }); setExistingModal({ table }) }
 
-  function openEditTable(table: SupplierPriceTable) {
-    setTableForm({
-      name: table.name,
-      description: table.description ?? '',
-      active: table.active,
-      validFrom: table.validFrom?.slice(0, 10) ?? '',
-      validUntil: table.validUntil?.slice(0, 10) ?? '',
-    })
-    setTableModal({ mode: 'edit', table })
-  }
-
-  function openCreateItem(table: SupplierPriceTable) {
-    setItemForm(emptyItemForm)
-    setItemModal({ table })
-  }
-
-  function openEditItem(table: SupplierPriceTable, item: SupplierProduct) {
-    setItemForm({
-      itemName: item.name ?? item.itemName,
-      sku: item.sku ?? '',
-      category: item.category ?? '',
-      unit: item.unit,
-      quantity: String(item.quantity),
-      unitPrice: String(item.unitPrice),
-      notes: item.notes ?? '',
-    })
-    setItemModal({ table, item })
-  }
-
-  async function submitTable(event: FormEvent) {
-    event.preventDefault()
-    if (!tableForm.name.trim() || !tableModal) return
-    setSaving(true)
-    try {
-      const payload = {
-        ...tableForm,
-        description: tableForm.description?.trim() || null,
-        validFrom: tableForm.validFrom || null,
-        validUntil: tableForm.validUntil || null,
-      }
-      const result = tableModal.mode === 'create'
-        ? await supplierApi.createPriceTable(payload)
-        : await supplierApi.updatePriceTable(tableModal.table!.id, payload)
-      setTables(result.tables)
-      setTableModal(null)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function submitItem(event: FormEvent) {
-    event.preventDefault()
-    if (!itemForm.itemName.trim() || !itemModal) return
-    setSaving(true)
-    try {
-      const result = itemModal.item
-        ? await supplierApi.updatePriceTableItem(itemModal.table.id, itemModal.item.id, itemForm)
-        : await supplierApi.createPriceTableItem(itemModal.table.id, itemForm)
-      setTables(result.tables)
-      setItemModal(null)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function deleteTable(table: SupplierPriceTable) {
-    if (!confirm(`Excluir a tabela "${table.name}"?`)) return
-    const result = await supplierApi.deletePriceTable(table.id)
-    setTables(result.tables)
-  }
-
-  async function deleteItem(table: SupplierPriceTable, item: SupplierProduct) {
-    if (!confirm(`Remover "${item.name}" da tabela?`)) return
-    const result = await supplierApi.deletePriceTableItem(table.id, item.id)
-    setTables(result.tables)
-  }
+  async function submitTable(event: FormEvent) { event.preventDefault(); if (!tableForm.name.trim() || !tableModal) return; setSaving(true); try { const payload = { ...tableForm, description: tableForm.description?.trim() || null, validFrom: tableForm.validFrom || null, validUntil: tableForm.validUntil || null }; const result = tableModal.mode === 'create' ? await supplierApi.createPriceTable(payload) : await supplierApi.updatePriceTable(tableModal.table!.id, payload); setTables(result.tables); setTableModal(null) } finally { setSaving(false) } }
+  async function submitItem(event: FormEvent) { event.preventDefault(); if (!itemForm.itemName.trim() || !itemModal) return; setSaving(true); try { const result = itemModal.item ? await supplierApi.updatePriceTableItem(itemModal.table.id, itemModal.item.id, itemForm) : await supplierApi.createPriceTableItem(itemModal.table.id, itemForm); setTables(result.tables); setItemModal(null) } finally { setSaving(false) } }
+  async function submitExisting(event: FormEvent) { event.preventDefault(); if (!existingModal || !existingForm.sourceItemId) return; setSaving(true); try { const result = await supplierApi.createPriceTableItemFromExisting(existingModal.table.id, existingForm); setTables(result.tables); setExistingModal(null) } finally { setSaving(false) } }
+  async function submitDuplicate(event: FormEvent) { event.preventDefault(); if (!duplicateModal || !duplicateForm.name.trim()) return; setSaving(true); try { const result = await supplierApi.duplicatePriceTable(duplicateModal.table.id, duplicateForm); setTables(result.tables); setDuplicateModal(null) } finally { setSaving(false) } }
+  async function submitBulk(event: FormEvent) { event.preventDefault(); if (!bulkModal) return; setSaving(true); try { const result = await supplierApi.bulkAdjustPriceTablePrices(bulkModal.table.id, { priceAdjustmentPercent: bulkPercent }); setTables(result.tables); setBulkModal(null) } finally { setSaving(false) } }
+  async function deleteTable(table: SupplierPriceTable) { if (!confirm(`Excluir a tabela "${table.name}"?`)) return; const result = await supplierApi.deletePriceTable(table.id); setTables(result.tables) }
+  async function deleteItem(table: SupplierPriceTable, item: SupplierProduct) { if (!confirm(`Remover "${item.name}" da tabela?`)) return; const result = await supplierApi.deletePriceTableItem(table.id, item.id); setTables(result.tables) }
 
   return (
-    <SupplierShell>
-      <div className="space-y-4 pb-24 lg:pb-0">
-        <section className="ordr-panel rounded-[2rem] p-5 md:p-7">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-            <div>
-              <span className="ordr-kicker"><TableProperties className="size-3.5" /> Tabelas</span>
-              <h1 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">Tabelas de preço</h1>
-              <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-muted-foreground">
-                Cadastre preços por fornecedor. Cada item vira produto no catálogo do portal.
-              </p>
-            </div>
-            <button onClick={openCreateTable} className="ordr-button-primary"><Plus className="size-4" /> Nova tabela</button>
-          </div>
-          <div className="relative mt-6 max-w-xl">
-            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar tabela ou produto..." className="ordr-input pl-11" />
-          </div>
-        </section>
-
-        {loading ? (
-          <div className="ordr-panel flex items-center justify-center gap-3 rounded-[2rem] p-10 text-sm font-black text-muted-foreground">
-            <Loader2 className="size-5 animate-spin text-primary" /> Carregando tabelas...
-          </div>
-        ) : (
-          <section className="grid gap-4">
-            {filteredTables.map((table) => (
-              <article key={table.id} className="ordr-panel rounded-[2rem] p-5">
-                <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-                  <div className="min-w-0">
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <h2 className="text-2xl font-black tracking-tight">{table.name}</h2>
-                      <span className={table.active ? 'rounded-full bg-primary/10 px-3 py-1 text-xs font-black uppercase text-primary' : 'rounded-full bg-muted px-3 py-1 text-xs font-black uppercase text-muted-foreground'}>
-                        {table.active ? 'Ativa' : 'Inativa'}
-                      </span>
-                    </div>
-                    <p className="text-sm font-bold text-muted-foreground">{table.description || 'Sem descrição cadastrada.'}</p>
-                    <div className="mt-4 flex flex-wrap gap-2 text-xs font-black text-muted-foreground">
-                      <span className="rounded-full border px-3 py-1">{table.itemCount} item(ns)</span>
-                      <span className="rounded-full border px-3 py-1">Preço médio {money(table.averagePrice ?? 0)}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button onClick={() => openCreateItem(table)} className="ordr-button-primary"><Plus className="size-4" /> Item</button>
-                    <button onClick={() => openEditTable(table)} className="ordr-button-soft"><Edit3 className="size-4" /> Editar</button>
-                    <button onClick={() => deleteTable(table)} className="ordr-button-soft text-destructive"><Trash2 className="size-4" /> Excluir</button>
-                  </div>
-                </div>
-
-                <div className="mt-5 overflow-x-auto rounded-2xl border">
-                  <table className="w-full min-w-[720px] text-left text-sm">
-                    <thead className="bg-background/70 text-xs font-black uppercase tracking-wide text-muted-foreground">
-                      <tr>
-                        <th className="px-4 py-3">Item</th>
-                        <th className="px-4 py-3">SKU</th>
-                        <th className="px-4 py-3">Qtd.</th>
-                        <th className="px-4 py-3 text-right">Preço un.</th>
-                        <th className="px-4 py-3 text-right">Total</th>
-                        <th className="px-4 py-3 text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {table.items.map((item) => (
-                        <tr key={item.id} className="border-t">
-                          <td className="px-4 py-3">
-                            <p className="font-black">{item.name}</p>
-                            <p className="text-xs font-bold text-muted-foreground">{item.category || item.notes || '—'}</p>
-                          </td>
-                          <td className="px-4 py-3 font-bold text-muted-foreground">{item.sku || '—'}</td>
-                          <td className="px-4 py-3 font-bold">{item.quantity} {item.unit}</td>
-                          <td className="px-4 py-3 text-right font-bold">{money(item.unitPrice)}</td>
-                          <td className="px-4 py-3 text-right font-black text-primary">{money(item.price)}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex justify-end gap-2">
-                              <button onClick={() => openEditItem(table, item)} className="grid size-9 place-items-center rounded-xl border hover:bg-secondary"><Edit3 className="size-4" /></button>
-                              <button onClick={() => deleteItem(table, item)} className="grid size-9 place-items-center rounded-xl border text-destructive hover:bg-destructive/10"><Trash2 className="size-4" /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {table.items.length === 0 ? (
-                        <tr><td colSpan={6} className="px-4 py-8 text-center text-sm font-bold text-muted-foreground">Nenhum item cadastrado nessa tabela.</td></tr>
-                      ) : null}
-                    </tbody>
-                  </table>
-                </div>
-              </article>
-            ))}
-          </section>
-        )}
-
-        {!loading && filteredTables.length === 0 ? (
-          <div className="ordr-panel rounded-[2rem] p-10 text-center">
-            <TableProperties className="mx-auto mb-3 size-8 text-muted-foreground" />
-            <p className="font-black">Nenhuma tabela encontrada</p>
-            <p className="mt-1 text-sm font-bold text-muted-foreground">Crie a primeira tabela para liberar produtos no catálogo.</p>
-          </div>
-        ) : null}
-
-        {tableModal ? (
-          <div className="modal-backdrop">
-            <form onSubmit={submitTable} className="modal-card ordr-panel p-5 md:p-6">
-              <ModalHeader title={tableModal.mode === 'create' ? 'Nova tabela' : 'Editar tabela'} onClose={() => setTableModal(null)} />
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Nome</span><input className="ordr-input" value={tableForm.name} onChange={(e) => setTableForm((f) => ({ ...f, name: e.target.value }))} required /></label>
-                <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Descrição</span><textarea className="ordr-input" value={tableForm.description ?? ''} onChange={(e) => setTableForm((f) => ({ ...f, description: e.target.value }))} /></label>
-                <label className="space-y-2"><span className="text-sm font-black">Válida de</span><input type="date" className="ordr-input" value={tableForm.validFrom ?? ''} onChange={(e) => setTableForm((f) => ({ ...f, validFrom: e.target.value }))} /></label>
-                <label className="space-y-2"><span className="text-sm font-black">Válida até</span><input type="date" className="ordr-input" value={tableForm.validUntil ?? ''} onChange={(e) => setTableForm((f) => ({ ...f, validUntil: e.target.value }))} /></label>
-                <label className="flex items-center gap-3 rounded-2xl border bg-background/60 p-4 md:col-span-2"><input type="checkbox" checked={tableForm.active ?? true} onChange={(e) => setTableForm((f) => ({ ...f, active: e.target.checked }))} /> <span className="text-sm font-black">Tabela ativa</span></label>
-              </div>
-              <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setTableModal(null)} className="ordr-button-soft">Cancelar</button><button className="ordr-button-primary" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null}Salvar</button></div>
-            </form>
-          </div>
-        ) : null}
-
-        {itemModal ? (
-          <div className="modal-backdrop">
-            <form onSubmit={submitItem} className="modal-card ordr-panel p-5 md:p-6">
-              <ModalHeader title={itemModal.item ? 'Editar item' : `Novo item em ${itemModal.table.name}`} onClose={() => setItemModal(null)} />
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Nome do item</span><input className="ordr-input" value={itemForm.itemName} onChange={(e) => setItemForm((f) => ({ ...f, itemName: e.target.value }))} required /></label>
-                <label className="space-y-2"><span className="text-sm font-black">SKU / Código interno</span><input className="ordr-input" value={itemForm.sku ?? ''} onChange={(e) => setItemForm((f) => ({ ...f, sku: e.target.value.toUpperCase() }))} placeholder="Ex: COCA-2L" /></label>
-                <label className="space-y-2"><span className="text-sm font-black">Categoria</span><input className="ordr-input" value={itemForm.category ?? ''} onChange={(e) => setItemForm((f) => ({ ...f, category: e.target.value }))} placeholder="Bebidas, Carnes, Limpeza..." /></label>
-                <label className="space-y-2"><span className="text-sm font-black">Unidade</span><input className="ordr-input" value={itemForm.unit} onChange={(e) => setItemForm((f) => ({ ...f, unit: e.target.value }))} /></label>
-                <label className="space-y-2"><span className="text-sm font-black">Quantidade</span><input type="number" step="0.001" className="ordr-input" value={itemForm.quantity} onChange={(e) => setItemForm((f) => ({ ...f, quantity: e.target.value }))} /></label>
-                <label className="space-y-2"><span className="text-sm font-black">Preço unitário</span><input type="number" step="0.01" className="ordr-input" value={itemForm.unitPrice} onChange={(e) => setItemForm((f) => ({ ...f, unitPrice: e.target.value }))} /></label>
-                <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Informações do item</span><textarea className="ordr-input min-h-28" value={itemForm.notes ?? ''} onChange={(e) => setItemForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Marca, embalagem, validade média, observações de entrega..." /></label>
-              </div>
-              <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setItemModal(null)} className="ordr-button-soft">Cancelar</button><button className="ordr-button-primary" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null}Salvar</button></div>
-            </form>
-          </div>
-        ) : null}
-      </div>
-    </SupplierShell>
+    <SupplierShell><div className="space-y-4 pb-24 lg:pb-0">
+      <section className="ordr-panel rounded-[2rem] p-5 md:p-7"><div className="flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><span className="ordr-kicker"><TableProperties className="size-3.5" /> Tabelas</span><h1 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">Tabelas de preço</h1><p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-muted-foreground">Monte tabelas, duplique listas inteiras, ajuste preços em lote e reaproveite produtos já cadastrados.</p></div><button onClick={openCreateTable} className="ordr-button-primary"><Plus className="size-4" /> Nova tabela</button></div><div className="relative mt-6 max-w-xl"><Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar tabela, produto, SKU ou categoria..." className="ordr-input pl-11" /></div></section>
+      {loading ? <div className="ordr-panel flex items-center justify-center gap-3 rounded-[2rem] p-10 text-sm font-black text-muted-foreground"><Loader2 className="size-5 animate-spin text-primary" /> Carregando tabelas...</div> : <section className="grid gap-4">{filteredTables.map((table) => <article key={table.id} className="ordr-panel rounded-[2rem] p-5"><div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start"><div className="min-w-0"><div className="mb-3 flex flex-wrap items-center gap-2"><h2 className="text-2xl font-black tracking-tight">{table.name}</h2><span className={table.active ? 'rounded-full bg-primary/10 px-3 py-1 text-xs font-black uppercase text-primary' : 'rounded-full bg-muted px-3 py-1 text-xs font-black uppercase text-muted-foreground'}>{table.active ? 'Ativa' : 'Inativa'}</span></div><p className="text-sm font-bold text-muted-foreground">{table.description || 'Sem descrição cadastrada.'}</p><div className="mt-4 flex flex-wrap gap-2 text-xs font-black text-muted-foreground"><span className="rounded-full border px-3 py-1">{table.itemCount} item(ns)</span><span className="rounded-full border px-3 py-1">Preço médio {money(table.averagePrice ?? 0)}</span></div></div><div className="flex flex-wrap gap-2"><button onClick={() => openCreateItem(table)} className="ordr-button-primary"><Plus className="size-4" /> Item</button><button onClick={() => openExisting(table)} disabled={allProducts.filter((product) => product.tableId !== table.id).length === 0} className="ordr-button-soft disabled:opacity-50"><PackagePlus className="size-4" /> Produto existente</button><button onClick={() => openDuplicate(table)} className="ordr-button-soft"><Copy className="size-4" /> Duplicar</button><button onClick={() => { setBulkPercent('0'); setBulkModal({ table }) }} className="ordr-button-soft"><SlidersHorizontal className="size-4" /> Preços</button><button onClick={() => openEditTable(table)} className="ordr-button-soft"><Edit3 className="size-4" /> Editar</button><button onClick={() => deleteTable(table)} className="ordr-button-soft text-destructive"><Trash2 className="size-4" /> Excluir</button></div></div><div className="mt-5 overflow-x-auto rounded-2xl border"><table className="w-full min-w-[980px] text-left text-sm"><thead className="bg-background/70 text-xs font-black uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Item</th><th className="px-4 py-3">SKU</th><th className="px-4 py-3">Qtd.</th><th className="px-4 py-3 text-right">Preço un.</th><th className="px-4 py-3">Estoque</th><th className="px-4 py-3 text-right">Ações</th></tr></thead><tbody>{table.items.map((item) => <tr key={item.id} className="border-t"><td className="px-4 py-3"><p className="font-black">{item.name}</p><p className="text-xs font-bold text-muted-foreground">{item.category || item.notes || '—'}</p></td><td className="px-4 py-3 font-bold text-muted-foreground">{item.sku || '—'}</td><td className="px-4 py-3 font-bold">{item.quantity} {item.unit}</td><td className="px-4 py-3 text-right font-black text-primary">{money(item.unitPrice)}</td><td className="px-4 py-3 font-bold">{item.stockEnabled ? <span className={item.lowStock ? 'text-amber-600' : 'text-muted-foreground'}>{item.stockQuantity ?? 0} · mín. {item.minStockQuantity ?? 0}</span> : '—'}</td><td className="px-4 py-3"><div className="flex justify-end gap-2"><button onClick={() => openEditItem(table, item)} className="grid size-9 place-items-center rounded-xl border hover:bg-secondary"><Edit3 className="size-4" /></button><button onClick={() => deleteItem(table, item)} className="grid size-9 place-items-center rounded-xl border text-destructive hover:bg-destructive/10"><Trash2 className="size-4" /></button></div></td></tr>)}{table.items.length === 0 ? <tr><td colSpan={6} className="px-4 py-8 text-center text-sm font-bold text-muted-foreground">Nenhum item cadastrado nessa tabela.</td></tr> : null}</tbody></table></div></article>)}</section>}
+      {tableModal ? <Modal title={tableModal.mode === 'create' ? 'Nova tabela' : 'Editar tabela'} onClose={() => setTableModal(null)}><form onSubmit={submitTable} className="space-y-4"><label className="space-y-2"><span className="text-sm font-black">Nome</span><input className="ordr-input" value={tableForm.name} onChange={(e) => setTableForm((f) => ({ ...f, name: e.target.value }))} required /></label><label className="space-y-2"><span className="text-sm font-black">Descrição</span><textarea className="ordr-input min-h-24" value={tableForm.description ?? ''} onChange={(e) => setTableForm((f) => ({ ...f, description: e.target.value }))} /></label><div className="grid gap-4 md:grid-cols-2"><label className="space-y-2"><span className="text-sm font-black">Válida de</span><input type="date" className="ordr-input" value={tableForm.validFrom ?? ''} onChange={(e) => setTableForm((f) => ({ ...f, validFrom: e.target.value }))} /></label><label className="space-y-2"><span className="text-sm font-black">Até</span><input type="date" className="ordr-input" value={tableForm.validUntil ?? ''} onChange={(e) => setTableForm((f) => ({ ...f, validUntil: e.target.value }))} /></label></div><label className="flex items-center justify-between rounded-2xl border p-4"><span className="font-black">Tabela ativa</span><input type="checkbox" checked={Boolean(tableForm.active)} onChange={(e) => setTableForm((f) => ({ ...f, active: e.target.checked }))} className="size-5 accent-emerald-500" /></label><Actions saving={saving} onCancel={() => setTableModal(null)} /></form></Modal> : null}
+      {itemModal ? <ItemModal title={itemModal.item ? 'Editar item' : 'Novo item'} form={itemForm} setForm={setItemForm} onSubmit={submitItem} onClose={() => setItemModal(null)} saving={saving} /> : null}
+      {existingModal ? <Modal title="Adicionar produto existente" onClose={() => setExistingModal(null)}><form onSubmit={submitExisting} className="space-y-4"><label className="space-y-2"><span className="text-sm font-black">Produto já cadastrado</span><select className="ordr-input" value={existingForm.sourceItemId} onChange={(e) => setExistingForm((f) => ({ ...f, sourceItemId: e.target.value }))} required>{allProducts.filter((product) => product.tableId !== existingModal.table.id).map((product) => <option key={`${product.tableId}-${product.id}`} value={product.id}>{product.name} · {product.tableName} · {money(product.unitPrice)}</option>)}</select></label><label className="space-y-2"><span className="text-sm font-black">Ajuste de preço (%)</span><input type="number" step="0.01" className="ordr-input" value={existingForm.priceAdjustmentPercent ?? '0'} onChange={(e) => setExistingForm((f) => ({ ...f, priceAdjustmentPercent: e.target.value }))} placeholder="Ex: -20 ou 12.5" /></label><p className="rounded-2xl border bg-secondary p-4 text-sm font-bold text-muted-foreground">Use valores negativos para desconto, como <strong>-20</strong>, ou positivos para acréscimo.</p><Actions saving={saving} onCancel={() => setExistingModal(null)} /></form></Modal> : null}
+      {duplicateModal ? <Modal title="Duplicar tabela" onClose={() => setDuplicateModal(null)}><form onSubmit={submitDuplicate} className="space-y-4"><label className="space-y-2"><span className="text-sm font-black">Nome da nova tabela</span><input className="ordr-input" value={duplicateForm.name} onChange={(e) => setDuplicateForm((f) => ({ ...f, name: e.target.value }))} required /></label><label className="space-y-2"><span className="text-sm font-black">Ajuste em todos os preços (%)</span><input type="number" step="0.01" className="ordr-input" value={duplicateForm.priceAdjustmentPercent ?? '0'} onChange={(e) => setDuplicateForm((f) => ({ ...f, priceAdjustmentPercent: e.target.value }))} /></label><label className="flex items-center justify-between rounded-2xl border p-4"><span className="font-black">Nova tabela ativa</span><input type="checkbox" checked={Boolean(duplicateForm.active)} onChange={(e) => setDuplicateForm((f) => ({ ...f, active: e.target.checked }))} className="size-5 accent-emerald-500" /></label><Actions saving={saving} onCancel={() => setDuplicateModal(null)} /></form></Modal> : null}
+      {bulkModal ? <Modal title="Alterar preços em lote" onClose={() => setBulkModal(null)}><form onSubmit={submitBulk} className="space-y-4"><p className="text-sm font-bold text-muted-foreground">Isso altera todos os itens da tabela <strong>{bulkModal.table.name}</strong>.</p><label className="space-y-2"><span className="text-sm font-black">Ajuste percentual</span><input type="number" step="0.01" className="ordr-input" value={bulkPercent} onChange={(e) => setBulkPercent(e.target.value)} placeholder="Ex: -20" required /></label><p className="rounded-2xl border bg-secondary p-4 text-sm font-bold text-muted-foreground">Exemplos: <strong>-20</strong> aplica 20% de desconto. <strong>10</strong> aumenta 10%.</p><Actions saving={saving} onCancel={() => setBulkModal(null)} /></form></Modal> : null}
+    </div></SupplierShell>
   )
 }
 
-function ModalHeader({ title, onClose }: { title: string; onClose: () => void }) {
-  return (
-    <div className="mb-5 flex items-center justify-between gap-4">
-      <div><span className="ordr-kicker">Cadastro</span><h2 className="mt-3 text-2xl font-black tracking-tight">{title}</h2></div>
-      <button type="button" onClick={onClose} className="grid size-10 place-items-center rounded-2xl border bg-background/70"><X className="size-4" /></button>
-    </div>
-  )
+function ItemModal({ title, form, setForm, onSubmit, onClose, saving }: { title: string; form: PriceTableItemPayload; setForm: (updater: (value: PriceTableItemPayload) => PriceTableItemPayload) => void; onSubmit: (event: FormEvent) => void; onClose: () => void; saving: boolean }) {
+  return <Modal title={title} onClose={onClose}><form onSubmit={onSubmit} className="space-y-4"><label className="space-y-2"><span className="text-sm font-black">Nome do item</span><input className="ordr-input" value={form.itemName} onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value }))} required /></label><div className="grid gap-4 md:grid-cols-2"><label className="space-y-2"><span className="text-sm font-black">SKU</span><input className="ordr-input" value={form.sku ?? ''} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value.toUpperCase() }))} /></label><label className="space-y-2"><span className="text-sm font-black">Categoria</span><input className="ordr-input" value={form.category ?? ''} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} /></label><label className="space-y-2"><span className="text-sm font-black">Unidade</span><select className="ordr-input" value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}>{units.map((unit) => <option key={unit}>{unit}</option>)}</select></label><label className="space-y-2"><span className="text-sm font-black">Quantidade</span><input type="number" step="0.001" className="ordr-input" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} /></label><label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Preço unitário</span><input type="number" step="0.01" className="ordr-input" value={form.unitPrice} onChange={(e) => setForm((f) => ({ ...f, unitPrice: e.target.value }))} /></label></div><div className="rounded-3xl border bg-background/45 p-4"><label className="flex items-center justify-between gap-3"><span><strong className="block text-sm font-black">Controlar estoque</strong><span className="text-xs font-bold text-muted-foreground">Opcional para marcar estoque baixo no painel.</span></span><input type="checkbox" checked={Boolean(form.stockEnabled)} onChange={(e) => setForm((f) => ({ ...f, stockEnabled: e.target.checked }))} className="size-5 accent-emerald-500" /></label>{form.stockEnabled ? <div className="mt-4 grid gap-4 md:grid-cols-2"><label className="space-y-2"><span className="text-sm font-black">Estoque atual</span><input type="number" step="0.001" className="ordr-input" value={form.stockQuantity ?? '0'} onChange={(e) => setForm((f) => ({ ...f, stockQuantity: e.target.value }))} /></label><label className="space-y-2"><span className="text-sm font-black">Estoque mínimo</span><input type="number" step="0.001" className="ordr-input" value={form.minStockQuantity ?? '0'} onChange={(e) => setForm((f) => ({ ...f, minStockQuantity: e.target.value }))} /></label></div> : null}</div><label className="space-y-2"><span className="text-sm font-black">Informações do item</span><textarea className="ordr-input min-h-24" value={form.notes ?? ''} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} /></label><Actions saving={saving} onCancel={onClose} /></form></Modal>
 }
+
+function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) { return <div className="modal-backdrop"><div className="modal-card ordr-panel p-5 md:p-6"><div className="mb-5 flex items-start justify-between gap-4"><div><span className="ordr-kicker"><Layers className="size-3.5" /> Gestão</span><h2 className="mt-3 text-2xl font-black tracking-tight">{title}</h2></div><button type="button" onClick={onClose} className="grid size-10 place-items-center rounded-2xl border bg-background/70"><X className="size-4" /></button></div>{children}</div></div> }
+function Actions({ saving, onCancel }: { saving: boolean; onCancel: () => void }) { return <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={onCancel} className="ordr-button-soft">Cancelar</button><button className="ordr-button-primary" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null}Salvar</button></div> }

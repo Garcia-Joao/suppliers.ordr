@@ -15,13 +15,16 @@ const emptyItemForm: PriceTableItemPayload & { tableId: string } = {
   itemName: '',
   sku: '',
   category: '',
-  unit: 'un.',
+  unit: 'unit',
   quantity: '1',
   unitPrice: '0',
   notes: '',
+  stockEnabled: false,
+  stockQuantity: '0',
+  minStockQuantity: '0',
 }
 
-const units = ['un.', 'ml', 'l', 'g', 'kg']
+const units = ['unit', 'ml', 'l', 'g', 'kg']
 
 export default function ProdutosPage() {
   const [tables, setTables] = useState<SupplierPriceTable[]>([])
@@ -80,6 +83,9 @@ export default function ProdutosPage() {
       quantity: String(product.quantity),
       unitPrice: String(product.unitPrice),
       notes: product.notes ?? '',
+      stockEnabled: Boolean(product.stockEnabled),
+      stockQuantity: String(product.stockQuantity ?? 0),
+      minStockQuantity: String(product.minStockQuantity ?? 0),
     })
     setItemModal({ mode: 'edit', product })
   }
@@ -97,6 +103,9 @@ export default function ProdutosPage() {
         quantity: itemForm.quantity,
         unitPrice: itemForm.unitPrice,
         notes: itemForm.notes?.trim() || null,
+        stockEnabled: Boolean(itemForm.stockEnabled),
+        stockQuantity: itemForm.stockQuantity ?? '0',
+        minStockQuantity: itemForm.minStockQuantity ?? '0',
       }
 
       if (itemModal.mode === 'edit' && itemModal.product) {
@@ -187,6 +196,7 @@ export default function ProdutosPage() {
                     <th className="px-5 py-4">Tabela</th>
                     <th className="px-5 py-4">Quantidade</th>
                     <th className="px-5 py-4 text-right">Preço</th>
+                    <th className="px-5 py-4">Estoque</th>
                     <th className="px-5 py-4 text-right">Ações</th>
                   </tr>
                 </thead>
@@ -202,6 +212,7 @@ export default function ProdutosPage() {
                       <td className="px-5 py-4 font-bold">{product.tableName ?? '—'}</td>
                       <td className="px-5 py-4 font-bold">{product.quantity} {product.unit}</td>
                       <td className="px-5 py-4 text-right font-black text-primary">{money(product.price)}</td>
+                      <td className="px-5 py-4 font-bold">{product.stockEnabled ? `${product.stockQuantity ?? 0} / mín. ${product.minStockQuantity ?? 0}` : '—'}</td>
                       <td className="px-5 py-4">
                         <div className="flex justify-end gap-2">
                           <button onClick={() => openEditProduct(product)} className="grid size-9 place-items-center rounded-xl border hover:bg-secondary"><Edit3 className="size-4" /></button>
@@ -244,6 +255,18 @@ export default function ProdutosPage() {
                 <label className="space-y-2"><span className="text-sm font-black">Unidade</span><select className="ordr-input" value={itemForm.unit} onChange={(e) => setItemForm((f) => ({ ...f, unit: e.target.value }))}>{units.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
                 <label className="space-y-2"><span className="text-sm font-black">Quantidade por preço</span><input type="number" step="0.001" className="ordr-input" value={itemForm.quantity} onChange={(e) => setItemForm((f) => ({ ...f, quantity: e.target.value }))} /></label>
                 <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Preço unitário</span><input type="number" step="0.01" className="ordr-input" value={itemForm.unitPrice} onChange={(e) => setItemForm((f) => ({ ...f, unitPrice: e.target.value }))} /></label>
+                <div className="rounded-3xl border bg-background/45 p-4 md:col-span-2">
+                  <label className="flex items-center justify-between gap-3">
+                    <span><strong className="block text-sm font-black">Controlar estoque</strong><span className="text-xs font-bold text-muted-foreground">Opcional para o fornecedor acompanhar disponibilidade.</span></span>
+                    <input type="checkbox" checked={Boolean(itemForm.stockEnabled)} onChange={(e) => setItemForm((f) => ({ ...f, stockEnabled: e.target.checked }))} className="size-5 accent-emerald-500" />
+                  </label>
+                  {itemForm.stockEnabled ? (
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <label className="space-y-2"><span className="text-sm font-black">Estoque atual</span><input type="number" step="0.001" className="ordr-input" value={itemForm.stockQuantity ?? '0'} onChange={(e) => setItemForm((f) => ({ ...f, stockQuantity: e.target.value }))} /></label>
+                      <label className="space-y-2"><span className="text-sm font-black">Estoque mínimo</span><input type="number" step="0.001" className="ordr-input" value={itemForm.minStockQuantity ?? '0'} onChange={(e) => setItemForm((f) => ({ ...f, minStockQuantity: e.target.value }))} /></label>
+                    </div>
+                  ) : null}
+                </div>
                 <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Informações do item</span><textarea className="ordr-input min-h-28" value={itemForm.notes ?? ''} onChange={(e) => setItemForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Marca, embalagem, validade média, observações de entrega..." /></label>
               </div>
 
@@ -279,6 +302,11 @@ function ProductCard({ product, onEdit, onDelete }: { product: SupplierProduct; 
           <p className="mt-1 font-black text-primary">{money(product.price)}</p>
         </div>
       </div>
+      {product.stockEnabled ? (
+        <div className={product.lowStock ? 'mt-4 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm font-black text-amber-600' : 'mt-4 rounded-2xl border bg-background/60 p-3 text-sm font-black text-muted-foreground'}>
+          Estoque: {product.stockQuantity ?? 0} · mínimo {product.minStockQuantity ?? 0}
+        </div>
+      ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
         {product.sku ? <span className="rounded-full border px-3 py-1 text-xs font-black text-muted-foreground">SKU {product.sku}</span> : null}
         {product.category ? <span className="rounded-full border px-3 py-1 text-xs font-black text-muted-foreground">{product.category}</span> : null}
