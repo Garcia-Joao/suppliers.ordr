@@ -22,7 +22,7 @@ export type SupplierSession = {
 const ORDR_APP_URL =
   process.env.NEXT_PUBLIC_ORDR_APP_URL ||
   process.env.NEXT_PUBLIC_MAIN_APP_URL ||
-  'https://app.panelordr.com.br'
+  'https://panelordr.com.br'
 
 export function isSupplierUser(user?: SupplierAuthUser | null) {
   return String(user?.currentCompany?.companyType ?? '').toUpperCase() === 'SUPPLIER'
@@ -45,9 +45,7 @@ export function getMainLoginUrl() {
 
   if (typeof window === 'undefined') return `${base}/login`
 
-  const url = new URL(`${base}/login`)
-  url.searchParams.set('redirectTo', window.location.href)
-  return url.toString()
+  return `${base}/login/`
 }
 
 export function redirectToMainLogin() {
