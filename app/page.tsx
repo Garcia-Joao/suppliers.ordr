@@ -10,6 +10,8 @@ import {
   Loader2,
   PackageSearch,
   Power,
+  ShieldCheck,
+  Sparkles,
   TableProperties,
   Wifi,
   WifiOff,
@@ -26,6 +28,13 @@ function todayLabel(data: DashboardData | null) {
   if (!today) return 'Sem horário cadastrado hoje'
   if (!today.enabled) return 'Fechado hoje'
   return `${today.startTime} às ${today.endTime}`
+}
+
+function onlineReason(data: DashboardData | null) {
+  if (!data) return 'Carregando disponibilidade...'
+  if (!data.supplier.onlineEnabled) return 'O fornecedor está pausado manualmente.'
+  if (!data.onlineStatus.insideOperatingHours) return 'Fora do horário de expediente configurado.'
+  return 'Disponível para operações e futuras solicitações.'
 }
 
 export default function DashboardPage() {
@@ -86,24 +95,28 @@ export default function DashboardPage() {
     <SupplierShell>
       <div className="space-y-4 pb-24 lg:pb-0">
         <section className="ordr-panel relative overflow-hidden rounded-[2rem] p-5 md:p-8">
-          <div className="pointer-events-none absolute -right-20 -top-20 size-80 rounded-full bg-primary/20 blur-3xl" />
-          <div className="relative grid gap-6 xl:grid-cols-[1.25fr_0.75fr] xl:items-stretch">
-            <div>
-              <span className="ordr-kicker">Dashboard</span>
-              <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight md:text-6xl">
-                Painel do fornecedor
-              </h1>
-              <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-muted-foreground md:text-lg">
-                Gerencie disponibilidade, catálogo e tabelas de preço com a mesma identidade visual do ORDR.
-              </p>
+          <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-primary/20 blur-3xl" />
+          <div className="pointer-events-none absolute -left-24 bottom-0 size-80 rounded-full bg-accent/10 blur-3xl" />
+
+          <div className="relative grid gap-5 xl:grid-cols-[1.05fr_0.95fr] xl:items-stretch">
+            <div className="flex min-h-[360px] flex-col justify-between">
+              <div>
+                <span className="ordr-kicker"><Sparkles className="size-3.5" /> Dashboard</span>
+                <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight md:text-6xl">
+                  Painel do fornecedor
+                </h1>
+                <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-muted-foreground md:text-lg">
+                  Gerencie disponibilidade, catálogo e tabelas de preço com a identidade visual do ORDR.
+                </p>
+              </div>
 
               {loading ? (
-                <div className="mt-8 inline-flex items-center gap-2 rounded-2xl border bg-background/70 px-4 py-3 text-sm font-black text-muted-foreground">
+                <div className="mt-8 inline-flex w-fit items-center gap-2 rounded-2xl border bg-background/70 px-4 py-3 text-sm font-black text-muted-foreground">
                   <Loader2 className="size-4 animate-spin text-primary" /> Carregando informações...
                 </div>
               ) : data ? (
                 <div className="mt-8 flex flex-wrap items-center gap-3">
-                  <button onClick={toggleOnline} disabled={savingOnline} className="ordr-button-primary">
+                  <button onClick={toggleOnline} disabled={savingOnline} className={isOnline ? 'ordr-button-primary' : 'ordr-button-soft'}>
                     {savingOnline ? <Loader2 className="size-4 animate-spin" /> : <Power className="size-4" />}
                     {data.supplier.onlineEnabled ? 'Pausar online' : 'Disponibilizar online'}
                   </button>
@@ -115,28 +128,51 @@ export default function DashboardPage() {
               ) : null}
             </div>
 
-            <div className="rounded-[2rem] border bg-background/65 p-5">
-              <div className="mb-5 flex items-center justify-between gap-4">
+            <div className={isOnline ? 'relative overflow-hidden rounded-[2rem] border border-primary/35 bg-primary/12 p-5 shadow-[0_26px_80px_color-mix(in_oklch,var(--primary)_18%,transparent)]' : 'relative overflow-hidden rounded-[2rem] border bg-background/65 p-5'}>
+              <div className={isOnline ? 'pointer-events-none absolute -right-16 -top-16 size-52 rounded-full bg-primary/35 blur-3xl' : 'pointer-events-none absolute -right-16 -top-16 size-52 rounded-full bg-muted/55 blur-3xl'} />
+              <div className="relative flex h-full min-h-[330px] flex-col justify-between">
                 <div>
-                  <p className="text-sm font-black text-muted-foreground">Status atual</p>
-                  <h2 className="mt-1 text-2xl font-black">{isOnline ? 'Online' : 'Offline'}</h2>
+                  <div className="mb-5 flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Status atual</p>
+                      <h2 className={isOnline ? 'mt-2 text-5xl font-black tracking-tight text-primary' : 'mt-2 text-5xl font-black tracking-tight'}>
+                        {isOnline ? 'Online' : 'Offline'}
+                      </h2>
+                    </div>
+                    <div className={isOnline ? 'relative grid size-16 place-items-center rounded-3xl bg-primary text-primary-foreground shadow-lg shadow-primary/25' : 'grid size-16 place-items-center rounded-3xl bg-muted text-muted-foreground'}>
+                      {isOnline ? <span className="absolute inset-0 animate-ping rounded-3xl bg-primary/35" /> : null}
+                      {isOnline ? <Wifi className="relative size-8" /> : <WifiOff className="size-8" />}
+                    </div>
+                  </div>
+
+                  <div className="rounded-[1.5rem] border bg-background/70 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className={isOnline ? 'grid size-10 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary' : 'grid size-10 shrink-0 place-items-center rounded-2xl bg-muted text-muted-foreground'}>
+                        <ShieldCheck className="size-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black">{onlineReason(data)}</p>
+                        <p className="mt-1 text-xs font-bold text-muted-foreground">
+                          Status final = botão online + horário do dia.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className={isOnline ? 'grid size-14 place-items-center rounded-2xl bg-primary/15 text-primary' : 'grid size-14 place-items-center rounded-2xl bg-muted text-muted-foreground'}>
-                  {isOnline ? <Wifi className="size-7" /> : <WifiOff className="size-7" />}
-                </div>
-              </div>
-              <div className="space-y-3 text-sm font-bold">
-                <div className="flex items-center justify-between gap-3 rounded-2xl border bg-card/55 p-4">
-                  <span className="text-muted-foreground">Disponibilizado manualmente</span>
-                  <span>{data?.supplier.onlineEnabled ? 'Sim' : 'Não'}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3 rounded-2xl border bg-card/55 p-4">
-                  <span className="text-muted-foreground">Dentro do expediente</span>
-                  <span>{data?.onlineStatus.insideOperatingHours ? 'Sim' : 'Não'}</span>
-                </div>
-                <div className="rounded-2xl border bg-card/55 p-4">
-                  <span className="text-muted-foreground">Hoje</span>
-                  <p className="mt-1 text-base font-black">{todayLabel(data)}</p>
+
+                <div className="mt-5 grid gap-3 text-sm font-bold md:grid-cols-2">
+                  <div className="rounded-2xl border bg-card/55 p-4">
+                    <span className="text-muted-foreground">Disponibilizado</span>
+                    <p className="mt-1 text-lg font-black">{data?.supplier.onlineEnabled ? 'Sim' : 'Não'}</p>
+                  </div>
+                  <div className="rounded-2xl border bg-card/55 p-4">
+                    <span className="text-muted-foreground">Expediente</span>
+                    <p className="mt-1 text-lg font-black">{data?.onlineStatus.insideOperatingHours ? 'Aberto' : 'Fechado'}</p>
+                  </div>
+                  <div className="rounded-2xl border bg-card/55 p-4 md:col-span-2">
+                    <span className="text-muted-foreground">Hoje</span>
+                    <p className="mt-1 text-lg font-black">{todayLabel(data)}</p>
+                  </div>
                 </div>
               </div>
             </div>

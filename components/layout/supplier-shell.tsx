@@ -37,11 +37,11 @@ import {
 } from '@/lib/auth'
 
 const nav = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/tabelas', label: 'Tabelas', icon: TableProperties },
-  { href: '/produtos', label: 'Produtos', icon: PackageSearch },
-  { href: '/pedidos', label: 'Pedidos', icon: ClipboardList },
-  { href: '/perfil', label: 'Perfil', icon: UserCircle },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard, helper: 'Visão geral' },
+  { href: '/tabelas', label: 'Tabelas', icon: TableProperties, helper: 'Preços' },
+  { href: '/produtos', label: 'Produtos', icon: PackageSearch, helper: 'Catálogo' },
+  { href: '/pedidos', label: 'Pedidos', icon: ClipboardList, helper: 'Em breve' },
+  { href: '/perfil', label: 'Perfil', icon: UserCircle, helper: 'Cadastro' },
 ]
 
 function companyTypeLabel(company: SupplierAuthCompany) {
@@ -159,48 +159,54 @@ export function SupplierShell({ children }: { children: ReactNode }) {
   if (!session) return null
 
   return (
-    <div className="min-h-screen lg:pl-[308px]">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[292px] border-r bg-background/96 p-4 shadow-[18px_0_60px_rgba(0,0,0,0.18)] backdrop-blur-xl lg:flex lg:flex-col">
-        <div className="mb-5 flex items-center justify-between gap-3 rounded-[1.5rem] border bg-secondary/45 px-3 py-3">
-          <SuppliersBrand />
+    <div className="min-h-screen lg:pl-[292px]">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[292px] border-r bg-background/98 p-0 shadow-[18px_0_70px_rgba(0,0,0,0.22)] backdrop-blur-xl lg:flex lg:flex-col">
+        <div className="border-b px-5 py-5">
+          <div className="flex items-center justify-between gap-3">
+            <SuppliersBrand />
+            <button
+              onClick={toggleTheme}
+              className="grid size-10 place-items-center rounded-2xl border bg-background/75 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+              title={theme === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'}
+            >
+              {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            </button>
+          </div>
+        </div>
+
+        <div className="px-4 py-4">
           <button
-            onClick={toggleTheme}
-            className="grid size-10 place-items-center rounded-2xl border bg-background/75 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-            title={theme === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'}
+            type="button"
+            onClick={() => hasMultipleCompanies ? setCompanyModalOpen(true) : undefined}
+            className={clsx(
+              'group relative w-full overflow-hidden rounded-[1.65rem] border bg-primary/8 p-4 text-left transition',
+              'shadow-[0_18px_46px_color-mix(in_oklch,var(--primary)_12%,transparent)]',
+              hasMultipleCompanies ? 'hover:-translate-y-0.5 hover:border-primary hover:bg-primary/12' : 'cursor-default'
+            )}
           >
-            {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            <div className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/20 blur-2xl transition group-hover:bg-primary/30" />
+            <div className="relative mb-4 flex items-center gap-3">
+              <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/20">
+                <Building2 className="size-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-black">{session.supplierName}</p>
+                <p className="text-xs font-bold text-muted-foreground">Empresa ativa</p>
+              </div>
+              {hasMultipleCompanies ? <RefreshCw className="size-4 shrink-0 text-primary" /> : null}
+            </div>
+            <div className="relative flex items-center justify-between gap-2">
+              <span className="rounded-full bg-primary/12 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-primary ring-1 ring-primary/20">
+                Fornecedor
+              </span>
+              {hasMultipleCompanies ? (
+                <span className="text-xs font-black text-primary">Clique para trocar</span>
+              ) : null}
+            </div>
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => hasMultipleCompanies ? setCompanyModalOpen(true) : undefined}
-          className={clsx(
-            'mb-4 w-full rounded-[1.5rem] border bg-primary/8 p-4 text-left transition',
-            hasMultipleCompanies ? 'hover:-translate-y-0.5 hover:border-primary hover:bg-primary/12' : 'cursor-default'
-          )}
-        >
-          <div className="mb-3 flex items-center gap-3">
-            <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary">
-              <Building2 className="size-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-black">{session.supplierName}</p>
-              <p className="text-xs font-bold text-muted-foreground">Empresa ativa</p>
-            </div>
-            {hasMultipleCompanies ? <RefreshCw className="size-4 shrink-0 text-muted-foreground" /> : null}
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-primary">
-              Fornecedor
-            </span>
-            {hasMultipleCompanies ? (
-              <span className="text-xs font-black text-muted-foreground">Trocar</span>
-            ) : null}
-          </div>
-        </button>
-
-        <nav className="space-y-1.5">
+        <nav className="flex-1 space-y-1.5 px-4 pb-4">
           {nav.map((item) => {
             const Icon = item.icon
             const active = isActivePath(pathname, item.href)
@@ -209,29 +215,26 @@ export function SupplierShell({ children }: { children: ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={clsx(
-                  'group relative flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black transition',
+                  'group relative flex items-center gap-3 rounded-2xl px-4 py-3.5 text-sm font-black transition',
                   active
-                    ? 'bg-primary text-primary-foreground shadow-lg shadow-emerald-500/20'
+                    ? 'bg-primary text-primary-foreground shadow-[0_18px_40px_color-mix(in_oklch,var(--primary)_24%,transparent)]'
                     : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 )}
               >
-                {active ? <span className="absolute -left-4 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-primary" /> : null}
-                <Icon className="size-4 shrink-0" />
-                <span>{item.label}</span>
+                {active ? <span className="absolute -left-4 top-1/2 h-9 w-1 -translate-y-1/2 rounded-r-full bg-primary" /> : null}
+                <div className={clsx('grid size-9 place-items-center rounded-xl transition', active ? 'bg-primary-foreground/18' : 'bg-secondary/70 group-hover:bg-background/80')}>
+                  <Icon className="size-4 shrink-0" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block leading-none">{item.label}</span>
+                  <span className={clsx('mt-1 block text-[11px] font-bold leading-none', active ? 'text-primary-foreground/72' : 'text-muted-foreground')}>{item.helper}</span>
+                </div>
               </Link>
             )
           })}
         </nav>
 
-        <div className="mt-auto space-y-2 rounded-3xl border bg-secondary/40 p-4">
-          {hasMultipleCompanies ? (
-            <button
-              onClick={() => setCompanyModalOpen(true)}
-              className="ordr-button-soft w-full"
-            >
-              <RefreshCw className="size-4" /> Trocar empresa
-            </button>
-          ) : null}
+        <div className="border-t p-4">
           <button onClick={logout} className="ordr-button-soft w-full text-muted-foreground">
             <LogOut className="size-4" /> Sair
           </button>
@@ -244,7 +247,7 @@ export function SupplierShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2">
             {hasMultipleCompanies ? (
               <button onClick={() => setCompanyModalOpen(true)} className="rounded-2xl border px-3 py-2 text-sm font-black">
-                Trocar
+                Empresa
               </button>
             ) : null}
             <button onClick={toggleTheme} className="rounded-2xl border px-3 py-2 text-sm font-black">
@@ -265,8 +268,8 @@ export function SupplierShell({ children }: { children: ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={clsx(
-                  'grid place-items-center rounded-2xl p-2 text-xs font-black',
-                  active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                  'grid place-items-center rounded-2xl p-2 text-xs font-black transition',
+                  active ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'text-muted-foreground'
                 )}
               >
                 <Icon className="mb-1 size-4" />
