@@ -1,17 +1,21 @@
-import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
 import './globals.css'
+import { SupplierAppFrame } from '@/components/layout/supplier-app-frame'
 import { ThemeProvider } from '@/components/theme/theme-provider'
 
-export const metadata: Metadata = {
+export const metadata = {
   title: 'ORDR Suppliers',
-  description: 'Portal de fornecedores do ORDR',
-  icons: [{ rel: 'icon', url: '/icon.svg' }],
+  description: 'Painel de fornecedores ORDR',
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR" className="dark">
-      <body><ThemeProvider>{children}</ThemeProvider></body>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body>
+        <ThemeProvider>
+          <SupplierAppFrame>{children}</SupplierAppFrame>
+        </ThemeProvider>
+      </body>
     </html>
   )
 }

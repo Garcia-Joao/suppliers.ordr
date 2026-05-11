@@ -388,3 +388,19 @@ select.field { appearance: none; }
 .dark .stock-mini-button:hover {
   background: rgba(255, 255, 255, 0.1);
 }
+
+/* Shell safety guards: keep pages inside the ORDR Suppliers app frame */
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+/* Avoid individual pages visually covering the sidebar */
+.supplier-page {
+  width: 100%;
+  min-width: 0;
+}
