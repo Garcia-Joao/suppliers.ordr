@@ -79,6 +79,12 @@ export const supplierApi = {
   async deletePriceTableItem(tableId: string, itemId: string) {
     return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/${itemId}`, json('DELETE'))
   },
+  async togglePriceTableItemActive(tableId: string, itemId: string, active: boolean) {
+    return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/${itemId}/active`, json('PATCH', { active }))
+  },
+  async adjustItemStock(tableId: string, itemId: string, payload: StockAdjustmentPayload) {
+    return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/${itemId}/stock-adjust`, json('PATCH', payload))
+  },
   async updateItemStock(tableId: string, itemId: string, payload: StockPayload) {
     return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/${itemId}/stock`, json('PATCH', payload))
   },
@@ -165,6 +171,7 @@ export type SupplierProduct = {
   unitPrice: number
   price: number
   notes?: string | null
+  active?: boolean
   stockEnabled?: boolean
   stockQuantity?: number
   minStockQuantity?: number
@@ -189,7 +196,6 @@ export type SupplierProfile = {
   ordrCode?: string | null
   onlineEnabled: boolean
   automaticAvailability?: boolean
-  publicListingEnabled: boolean
   operatingHours: OperatingHour[]
   onlineStatus: OnlineStatus
 }
@@ -210,6 +216,7 @@ export type PriceTableItemPayload = {
   quantity: number | string
   unitPrice: number | string
   notes?: string | null
+  active?: boolean
   stockEnabled?: boolean
   stockQuantity?: number | string
   minStockQuantity?: number | string
@@ -224,6 +231,7 @@ export type ExistingProductPayload = {
   quantity?: number | string
   priceAdjustmentPercent?: number | string
   notes?: string | null
+  active?: boolean
   stockEnabled?: boolean
   stockQuantity?: number | string
   minStockQuantity?: number | string
@@ -244,6 +252,13 @@ export type BulkPriceAdjustmentPayload = {
 
 export type StockPayload = {
   stockEnabled?: boolean
+  stockQuantity?: number | string
+  minStockQuantity?: number | string
+}
+
+export type StockAdjustmentPayload = {
+  delta?: number | string
+  mode?: 'set' | 'delta'
   stockQuantity?: number | string
   minStockQuantity?: number | string
 }
