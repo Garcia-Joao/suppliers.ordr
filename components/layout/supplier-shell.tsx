@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { BarChart3, ClipboardList, LayoutDashboard, LogOut, PackageSearch, TableProperties, UserCircle } from 'lucide-react'
+import { BarChart3, ClipboardList, LayoutDashboard, LogOut, Moon, PackageSearch, Sun, TableProperties, UserCircle } from 'lucide-react'
 import { SuppliersBrand } from '@/components/brand/suppliers-brand'
 import { auth } from '@/lib/auth'
 import { clsx } from 'clsx'
 import type { ReactNode } from 'react'
+import { useTheme } from '@/components/theme/theme-provider'
 
 const nav = [
   { href: '/', label: 'Resumo', icon: LayoutDashboard },
@@ -19,6 +20,7 @@ const nav = [
 export function SupplierShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { theme, toggleTheme } = useTheme()
 
   function logout() {
     auth.clear()
@@ -29,7 +31,7 @@ export function SupplierShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen p-3 md:p-5">
       <div className="mx-auto grid max-w-[1500px] gap-4 lg:grid-cols-[280px_1fr]">
         <aside className="glass-card sticky top-5 hidden h-[calc(100vh-2.5rem)] rounded-[2rem] p-4 lg:block">
-          <div className="mb-8 px-2 pt-2"><SuppliersBrand /></div>
+          <div className="mb-8 flex items-center justify-between gap-3 px-2 pt-2"><SuppliersBrand /><button onClick={toggleTheme} className="grid size-10 place-items-center rounded-2xl border bg-background/60 text-muted-foreground hover:text-foreground" title={theme === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'}>{theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}</button></div>
           <nav className="space-y-2">
             {nav.map((item) => {
               const Icon = item.icon
@@ -58,7 +60,8 @@ export function SupplierShell({ children }: { children: ReactNode }) {
         <main className="min-w-0">
           <header className="glass-card sticky top-3 z-20 mb-4 flex items-center justify-between rounded-[1.75rem] px-4 py-3 lg:hidden">
             <SuppliersBrand compact />
-            <button onClick={logout} className="rounded-2xl border px-3 py-2 text-sm font-bold">Sair</button>
+            <div className="flex items-center gap-2"><button onClick={toggleTheme} className="rounded-2xl border px-3 py-2 text-sm font-bold">{theme === 'dark' ? 'Claro' : 'Escuro'}</button>
+            <button onClick={logout} className="rounded-2xl border px-3 py-2 text-sm font-bold">Sair</button></div>
           </header>
           {children}
           <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 gap-2 rounded-[1.5rem] border bg-background/90 p-2 backdrop-blur lg:hidden">

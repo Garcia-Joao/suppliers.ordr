@@ -1,7 +1,18 @@
 export type SupplierSession = {
-  token: string
-  supplierId: string
-  supplierName: string
+  token?: string
+  supplierId?: string
+  supplierName?: string
+  user?: {
+    id: string
+    username: string
+    name?: string | null
+    companyId?: string
+    currentCompany?: {
+      id: string
+      name: string
+      companyType?: string
+    } | null
+  }
 }
 
 const KEY = 'ordr_supplier_session'

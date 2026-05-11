@@ -12,15 +12,26 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers })
   const data = await response.json().catch(() => null)
-  if (!response.ok) throw new Error(data?.message || 'Erro ao comunicar com a API.')
+  if (!response.ok) throw new Error(data?.message || data?.error || 'Erro ao comunicar com a API.')
   return data as T
 }
 
 export const supplierApi = {
-  async login(email: string, password: string) {
-    return request<{ token: string; supplierId: string; supplierName: string }>('/supplier-portal/auth/login', {
-      method: 'POST', auth: false, body: JSON.stringify({ email, password }),
+  async login(username: string, password: string) {
+    const result = await request<{ token?: string; user: NonNullable<ReturnType<typeof auth.get>>['user'] }>('/auth/login', {
+      method: 'POST', auth: false, body: JSON.stringify({ username, password }),
     })
+
+    if (String(result.user?.currentCompany?.companyType ?? '').toUpperCase() !== 'SUPPLIER') {
+      throw new Error('Este acesso não pertence a uma empresa do tipo fornecedor.')
+    }
+
+    return {
+      token: result.token,
+      supplierId: result.user?.currentCompany?.id ?? result.user?.companyId,
+      supplierName: result.user?.currentCompany?.name ?? result.user?.name ?? result.user?.username ?? 'Fornecedor',
+      user: result.user,
+    }
   },
   async dashboard() {
     return request<DashboardData>('/supplier-portal/dashboard')

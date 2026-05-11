@@ -27,6 +27,17 @@ O projeto roda em `http://localhost:3002`.
 - Terminal: azul
 - Suppliers: verde/esmeralda
 
+O portal de fornecedores tem dois temas:
+
+- escuro como padrão
+- claro via botão no menu
+
+O ícone usa o mesmo símbolo do ORDR/Terminal, mudando apenas a cor para verde/esmeralda.
+
+## Login
+
+O Suppliers usa o mesmo login do ORDR (`/auth/login`). O usuário só entra no portal se a empresa atual for do tipo `SUPPLIER`.
+
 ## Rotas iniciais
 
 - `/login`
@@ -35,14 +46,3 @@ O projeto roda em `http://localhost:3002`.
 - `/tabelas`
 - `/produtos`
 - `/perfil`
-
-## Rotas de API esperadas futuramente
-
-- `POST /supplier-portal/auth/login`
-- `GET /supplier-portal/dashboard`
-- `GET /supplier-portal/orders`
-- `GET /supplier-portal/price-tables`
-- `GET /supplier-portal/products`
-- `GET /supplier-portal/profile`
-
-As telas já têm fallback visual para desenvolvimento mesmo antes dessas rotas existirem.

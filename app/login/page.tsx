@@ -9,7 +9,7 @@ import { ArrowRight, ShieldCheck } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -19,7 +19,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const session = await supplierApi.login(email, password)
+      const session = await supplierApi.login(username, password)
       auth.set(session)
       router.push('/')
     } catch (err) {
@@ -35,12 +35,12 @@ export default function LoginPage() {
         <SuppliersBrand />
         <div className="my-8 rounded-[1.5rem] border bg-background/60 p-4">
           <ShieldCheck className="mb-3 size-6 text-primary" />
-          <h1 className="text-3xl font-black tracking-tight">Acesso do fornecedor</h1>
+          <h1 className="text-3xl font-black tracking-tight">Login ORDR Suppliers</h1>
           <p className="mt-2 text-sm text-muted-foreground">Entre para visualizar requisições, tabelas de preço e produtos vinculados.</p>
         </div>
         <label className="mb-4 block">
-          <span className="mb-2 block text-sm font-bold">E-mail</span>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-2xl border bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-primary" placeholder="fornecedor@email.com" />
+          <span className="mb-2 block text-sm font-bold">Usuário</span>
+          <input value={username} onChange={(e) => setUsername(e.target.value)} className="w-full rounded-2xl border bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-primary" placeholder="usuario" />
         </label>
         <label className="mb-4 block">
           <span className="mb-2 block text-sm font-bold">Senha</span>
