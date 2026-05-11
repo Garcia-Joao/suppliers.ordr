@@ -148,7 +148,7 @@ export function SupplierShell({ children }: { children: ReactNode }) {
 
       setUser(nextUser)
       setCompanyModalOpen(false)
-      router.refresh()
+      window.location.assign(`${window.location.pathname}${window.location.search}`)
     } finally {
       setSwitchingCompanyId('')
     }
