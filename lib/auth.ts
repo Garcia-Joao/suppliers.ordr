@@ -1,33 +1,56 @@
+export type SupplierAuthCompany = {
+  id: string
+  name: string
+  companyType?: 'BUSINESS' | 'SUPPLIER' | string
+}
+
+export type SupplierAuthUser = {
+  id: string
+  username: string
+  name?: string | null
+  companyId?: string
+  currentCompany?: SupplierAuthCompany | null
+  companies?: SupplierAuthCompany[]
+}
+
 export type SupplierSession = {
-  token?: string
-  supplierId?: string
-  supplierName?: string
-  user?: {
-    id: string
-    username: string
-    name?: string | null
-    companyId?: string
-    currentCompany?: {
-      id: string
-      name: string
-      companyType?: string
-    } | null
+  user: SupplierAuthUser
+  supplierId: string
+  supplierName: string
+}
+
+const ORDR_APP_URL =
+  process.env.NEXT_PUBLIC_ORDR_APP_URL ||
+  process.env.NEXT_PUBLIC_MAIN_APP_URL ||
+  'https://app.panelordr.com.br'
+
+export function isSupplierUser(user?: SupplierAuthUser | null) {
+  return String(user?.currentCompany?.companyType ?? '').toUpperCase() === 'SUPPLIER'
+}
+
+export function toSupplierSession(user: SupplierAuthUser): SupplierSession {
+  return {
+    user,
+    supplierId: user.currentCompany?.id ?? user.companyId ?? '',
+    supplierName:
+      user.currentCompany?.name ??
+      user.name ??
+      user.username ??
+      'Fornecedor',
   }
 }
 
-const KEY = 'ordr_supplier_session'
+export function getMainLoginUrl() {
+  const base = ORDR_APP_URL.replace(/\/$/, '')
 
-export const auth = {
-  get(): SupplierSession | null {
-    if (typeof window === 'undefined') return null
-    const raw = window.localStorage.getItem(KEY)
-    if (!raw) return null
-    try { return JSON.parse(raw) as SupplierSession } catch { return null }
-  },
-  set(session: SupplierSession) {
-    window.localStorage.setItem(KEY, JSON.stringify(session))
-  },
-  clear() {
-    window.localStorage.removeItem(KEY)
-  },
+  if (typeof window === 'undefined') return `${base}/login`
+
+  const url = new URL(`${base}/login`)
+  url.searchParams.set('redirectTo', window.location.href)
+  return url.toString()
+}
+
+export function redirectToMainLogin() {
+  if (typeof window === 'undefined') return
+  window.location.href = getMainLoginUrl()
 }

@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react'
 import { SupplierShell } from '@/components/layout/supplier-shell'
 import { supplierApi, type DashboardData } from '@/lib/api'
-import { useRouter } from 'next/navigation'
-import { auth } from '@/lib/auth'
 import { ClipboardList, PackageCheck, TableProperties, TrendingUp } from 'lucide-react'
 
 const fallback: DashboardData = {
@@ -19,17 +17,12 @@ const fallback: DashboardData = {
 }
 
 export default function DashboardPage() {
-  const router = useRouter()
   const [data, setData] = useState<DashboardData>(fallback)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!auth.get()) {
-      router.push('/login')
-      return
-    }
     supplierApi.dashboard().then(setData).catch(() => setData(fallback)).finally(() => setLoading(false))
-  }, [router])
+  }, [])
 
   return (
     <SupplierShell>
