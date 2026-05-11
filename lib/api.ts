@@ -40,6 +40,9 @@ export const supplierApi = {
   async logout() {
     return request<{ ok: true }>('/auth/logout', { method: 'POST' })
   },
+  async switchCompany(companyId: string) {
+    return request<{ user: SupplierAuthUser }>('/auth/switch-company', json('POST', { companyId }))
+  },
   async dashboard() {
     return request<DashboardData>('/supplier-portal/dashboard')
   },

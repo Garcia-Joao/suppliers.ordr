@@ -2,6 +2,8 @@ export type SupplierAuthCompany = {
   id: string
   name: string
   companyType?: 'BUSINESS' | 'SUPPLIER' | string
+  isTest?: boolean
+  licenseActive?: boolean
 }
 
 export type SupplierAuthUser = {
@@ -17,6 +19,7 @@ export type SupplierSession = {
   user: SupplierAuthUser
   supplierId: string
   supplierName: string
+  companies: SupplierAuthCompany[]
 }
 
 const ORDR_APP_URL =
@@ -24,11 +27,21 @@ const ORDR_APP_URL =
   process.env.NEXT_PUBLIC_MAIN_APP_URL ||
   'https://panelordr.com.br'
 
+const SUPPLIERS_APP_URL =
+  process.env.NEXT_PUBLIC_SUPPLIERS_APP_URL ||
+  'https://suppliers.panelordr.com.br'
+
+export function isSupplierCompany(company?: SupplierAuthCompany | null) {
+  return String(company?.companyType ?? '').toUpperCase() === 'SUPPLIER'
+}
+
 export function isSupplierUser(user?: SupplierAuthUser | null) {
-  return String(user?.currentCompany?.companyType ?? '').toUpperCase() === 'SUPPLIER'
+  return isSupplierCompany(user?.currentCompany)
 }
 
 export function toSupplierSession(user: SupplierAuthUser): SupplierSession {
+  const companies = user.companies ?? []
+
   return {
     user,
     supplierId: user.currentCompany?.id ?? user.companyId ?? '',
@@ -37,18 +50,32 @@ export function toSupplierSession(user: SupplierAuthUser): SupplierSession {
       user.name ??
       user.username ??
       'Fornecedor',
+    companies,
   }
 }
 
+export function getMainAppUrl() {
+  return ORDR_APP_URL.replace(/\/$/, '')
+}
+
+export function getSuppliersAppUrl() {
+  return SUPPLIERS_APP_URL.replace(/\/$/, '')
+}
+
 export function getMainLoginUrl() {
-  const base = ORDR_APP_URL.replace(/\/$/, '')
+  return `${getMainAppUrl()}/login/`
+}
 
-  if (typeof window === 'undefined') return `${base}/login`
-
-  return `${base}/login/`
+export function getMainSelectionUrl() {
+  return `${getMainAppUrl()}/selecionar-empresa/`
 }
 
 export function redirectToMainLogin() {
   if (typeof window === 'undefined') return
   window.location.href = getMainLoginUrl()
+}
+
+export function redirectToMainApp() {
+  if (typeof window === 'undefined') return
+  window.location.href = getMainAppUrl()
 }

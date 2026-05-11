@@ -1,27 +1,32 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { FormEvent, useEffect, useMemo, useState } from 'react'
-import { Edit3, Loader2, Plus, Search, Trash2, X } from 'lucide-react'
+import { Edit3, Loader2, Plus, Search, TableProperties, Trash2, X } from 'lucide-react'
 import { SupplierShell } from '@/components/layout/supplier-shell'
 import { supplierApi, type PriceTableItemPayload, type PriceTablePayload, type SupplierPriceTable, type SupplierProduct } from '@/lib/api'
 
-const EMPTY_TABLE: PriceTablePayload = { name: '', description: '', active: true, validFrom: '', validUntil: '' }
-const EMPTY_ITEM: PriceTableItemPayload = { itemName: '', sku: '', unit: 'unit', quantity: 1, unitPrice: '', notes: '' }
+function money(value: number) {
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
 
-export default function PriceTablesPage() {
+const emptyTableForm: PriceTablePayload = { name: '', description: '', active: true, validFrom: '', validUntil: '' }
+const emptyItemForm: PriceTableItemPayload = { itemName: '', sku: '', unit: 'un.', quantity: '1', unitPrice: '0', notes: '' }
+
+export default function TabelasPage() {
   const [tables, setTables] = useState<SupplierPriceTable[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [query, setQuery] = useState('')
   const [tableModal, setTableModal] = useState<{ mode: 'create' | 'edit'; table?: SupplierPriceTable } | null>(null)
-  const [itemModal, setItemModal] = useState<{ mode: 'create' | 'edit'; table: SupplierPriceTable; item?: SupplierProduct } | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [tableForm, setTableForm] = useState<PriceTablePayload>(emptyTableForm)
+  const [itemModal, setItemModal] = useState<{ table: SupplierPriceTable; item?: SupplierProduct } | null>(null)
+  const [itemForm, setItemForm] = useState<PriceTableItemPayload>(emptyItemForm)
 
   async function load() {
     setLoading(true)
     try {
       const result = await supplierApi.priceTables()
-      setTables(result.tables)
+      setTables(result.tables ?? [])
     } finally {
       setLoading(false)
     }
@@ -29,24 +34,61 @@ export default function PriceTablesPage() {
 
   useEffect(() => { load().catch(() => setLoading(false)) }, [])
 
-  const filtered = useMemo(() => {
-    const search = query.trim().toLowerCase()
-    if (!search) return tables
-    return tables.filter((table) =>
-      [table.name, table.description, ...table.items.map((item) => `${item.name} ${item.sku}`)]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-        .includes(search)
-    )
+  const filteredTables = useMemo(() => {
+    const term = query.trim().toLowerCase()
+    if (!term) return tables
+    return tables.filter((table) => {
+      return `${table.name} ${table.description ?? ''} ${table.items.map((item) => item.name).join(' ')}`.toLowerCase().includes(term)
+    })
   }, [query, tables])
 
-  async function saveTable(payload: PriceTablePayload, table?: SupplierPriceTable) {
+  function openCreateTable() {
+    setTableForm(emptyTableForm)
+    setTableModal({ mode: 'create' })
+  }
+
+  function openEditTable(table: SupplierPriceTable) {
+    setTableForm({
+      name: table.name,
+      description: table.description ?? '',
+      active: table.active,
+      validFrom: table.validFrom?.slice(0, 10) ?? '',
+      validUntil: table.validUntil?.slice(0, 10) ?? '',
+    })
+    setTableModal({ mode: 'edit', table })
+  }
+
+  function openCreateItem(table: SupplierPriceTable) {
+    setItemForm(emptyItemForm)
+    setItemModal({ table })
+  }
+
+  function openEditItem(table: SupplierPriceTable, item: SupplierProduct) {
+    setItemForm({
+      itemName: item.name ?? item.itemName,
+      sku: item.sku ?? '',
+      unit: item.unit,
+      quantity: String(item.quantity),
+      unitPrice: String(item.unitPrice),
+      notes: item.notes ?? '',
+    })
+    setItemModal({ table, item })
+  }
+
+  async function submitTable(event: FormEvent) {
+    event.preventDefault()
+    if (!tableForm.name.trim() || !tableModal) return
     setSaving(true)
     try {
-      const result = table
-        ? await supplierApi.updatePriceTable(table.id, payload)
-        : await supplierApi.createPriceTable(payload)
+      const payload = {
+        ...tableForm,
+        description: tableForm.description?.trim() || null,
+        validFrom: tableForm.validFrom || null,
+        validUntil: tableForm.validUntil || null,
+      }
+      const result = tableModal.mode === 'create'
+        ? await supplierApi.createPriceTable(payload)
+        : await supplierApi.updatePriceTable(tableModal.table!.id, payload)
       setTables(result.tables)
       setTableModal(null)
     } finally {
@@ -54,18 +96,14 @@ export default function PriceTablesPage() {
     }
   }
 
-  async function removeTable(table: SupplierPriceTable) {
-    if (!confirm(`Excluir a tabela "${table.name}"?`)) return
-    const result = await supplierApi.deletePriceTable(table.id)
-    setTables(result.tables)
-  }
-
-  async function saveItem(payload: PriceTableItemPayload, table: SupplierPriceTable, item?: SupplierProduct) {
+  async function submitItem(event: FormEvent) {
+    event.preventDefault()
+    if (!itemForm.itemName.trim() || !itemModal) return
     setSaving(true)
     try {
-      const result = item
-        ? await supplierApi.updatePriceTableItem(table.id, item.id, payload)
-        : await supplierApi.createPriceTableItem(table.id, payload)
+      const result = itemModal.item
+        ? await supplierApi.updatePriceTableItem(itemModal.table.id, itemModal.item.id, itemForm)
+        : await supplierApi.createPriceTableItem(itemModal.table.id, itemForm)
       setTables(result.tables)
       setItemModal(null)
     } finally {
@@ -73,7 +111,13 @@ export default function PriceTablesPage() {
     }
   }
 
-  async function removeItem(table: SupplierPriceTable, item: SupplierProduct) {
+  async function deleteTable(table: SupplierPriceTable) {
+    if (!confirm(`Excluir a tabela "${table.name}"?`)) return
+    const result = await supplierApi.deletePriceTable(table.id)
+    setTables(result.tables)
+  }
+
+  async function deleteItem(table: SupplierPriceTable, item: SupplierProduct) {
     if (!confirm(`Remover "${item.name}" da tabela?`)) return
     const result = await supplierApi.deletePriceTableItem(table.id, item.id)
     setTables(result.tables)
@@ -81,97 +125,145 @@ export default function PriceTablesPage() {
 
   return (
     <SupplierShell>
-      <section className="space-y-4 pb-24 lg:pb-0">
-        <div className="rounded-[2rem] border bg-card p-5 md:p-8">
-          <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
+      <div className="space-y-4 pb-24 lg:pb-0">
+        <section className="ordr-panel rounded-[2rem] p-5 md:p-7">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.25em] text-primary">Tabelas</p>
-              <h1 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">Tabelas de preço</h1>
-              <p className="mt-3 max-w-2xl text-muted-foreground">Cadastre tabelas e itens que ficam disponíveis para clientes ORDR.</p>
+              <span className="ordr-kicker"><TableProperties className="size-3.5" /> Tabelas</span>
+              <h1 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">Tabelas de preço</h1>
+              <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-muted-foreground">
+                Cadastre preços por fornecedor. Cada item vira produto no catálogo do portal.
+              </p>
             </div>
-            <div className="flex flex-col gap-3 md:flex-row">
-              <div className="relative min-w-0 md:w-80">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full rounded-2xl border bg-background py-3 pl-11 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-primary" placeholder="Buscar tabela ou item..." />
-              </div>
-              <button onClick={() => setTableModal({ mode: 'create' })} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-lg shadow-emerald-500/20">
-                <Plus className="size-4" /> Nova tabela
-              </button>
-            </div>
+            <button onClick={openCreateTable} className="ordr-button-primary"><Plus className="size-4" /> Nova tabela</button>
           </div>
-        </div>
+          <div className="relative mt-6 max-w-xl">
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar tabela ou produto..." className="ordr-input pl-11" />
+          </div>
+        </section>
 
         {loading ? (
-          <div className="rounded-[2rem] border bg-card p-8 text-center text-sm font-black text-muted-foreground"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-primary" />Carregando tabelas...</div>
-        ) : filtered.length ? (
-          <div className="space-y-4">
-            {filtered.map((table) => (
-              <article key={table.id} className="overflow-hidden rounded-[2rem] border bg-card">
-                <div className="flex flex-col justify-between gap-4 border-b bg-secondary/40 p-5 lg:flex-row lg:items-center">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-background px-3 py-1 text-xs font-black uppercase">{table.active ? 'Ativa' : 'Inativa'}</span>
-                      <span className="text-xs font-bold text-muted-foreground">{table.itemCount} itens · média {money(table.averagePrice)}</span>
+          <div className="ordr-panel flex items-center justify-center gap-3 rounded-[2rem] p-10 text-sm font-black text-muted-foreground">
+            <Loader2 className="size-5 animate-spin text-primary" /> Carregando tabelas...
+          </div>
+        ) : (
+          <section className="grid gap-4">
+            {filteredTables.map((table) => (
+              <article key={table.id} className="ordr-panel rounded-[2rem] p-5">
+                <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+                  <div className="min-w-0">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <h2 className="text-2xl font-black tracking-tight">{table.name}</h2>
+                      <span className={table.active ? 'rounded-full bg-primary/10 px-3 py-1 text-xs font-black uppercase text-primary' : 'rounded-full bg-muted px-3 py-1 text-xs font-black uppercase text-muted-foreground'}>
+                        {table.active ? 'Ativa' : 'Inativa'}
+                      </span>
                     </div>
-                    <h2 className="mt-2 text-2xl font-black">{table.name}</h2>
-                    {table.description && <p className="mt-1 text-sm text-muted-foreground">{table.description}</p>}
+                    <p className="text-sm font-bold text-muted-foreground">{table.description || 'Sem descrição cadastrada.'}</p>
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs font-black text-muted-foreground">
+                      <span className="rounded-full border px-3 py-1">{table.itemCount} item(ns)</span>
+                      <span className="rounded-full border px-3 py-1">Preço médio {money(table.averagePrice ?? 0)}</span>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setItemModal({ mode: 'create', table })} className="rounded-2xl bg-primary px-4 py-2 text-sm font-black text-primary-foreground"><Plus className="mr-2 inline size-4" />Item</button>
-                    <button onClick={() => setTableModal({ mode: 'edit', table })} className="rounded-2xl border bg-background px-4 py-2 text-sm font-black"><Edit3 className="mr-2 inline size-4" />Editar</button>
-                    <button onClick={() => removeTable(table)} className="rounded-2xl border bg-background px-4 py-2 text-sm font-black text-red-500"><Trash2 className="mr-2 inline size-4" />Excluir</button>
+                    <button onClick={() => openCreateItem(table)} className="ordr-button-primary"><Plus className="size-4" /> Item</button>
+                    <button onClick={() => openEditTable(table)} className="ordr-button-soft"><Edit3 className="size-4" /> Editar</button>
+                    <button onClick={() => deleteTable(table)} className="ordr-button-soft text-destructive"><Trash2 className="size-4" /> Excluir</button>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[780px] text-sm">
-                    <thead>
-                      <tr className="text-left text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
-                        <th className="px-5 py-4">Item</th><th className="px-5 py-4">SKU</th><th className="px-5 py-4">Unidade</th><th className="px-5 py-4 text-right">Preço</th><th className="px-5 py-4 text-right">Ações</th>
+                <div className="mt-5 overflow-x-auto rounded-2xl border">
+                  <table className="w-full min-w-[720px] text-left text-sm">
+                    <thead className="bg-background/70 text-xs font-black uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3">Item</th>
+                        <th className="px-4 py-3">SKU</th>
+                        <th className="px-4 py-3">Qtd.</th>
+                        <th className="px-4 py-3 text-right">Preço un.</th>
+                        <th className="px-4 py-3 text-right">Total</th>
+                        <th className="px-4 py-3 text-right">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {table.items.length ? table.items.map((item) => (
+                      {table.items.map((item) => (
                         <tr key={item.id} className="border-t">
-                          <td className="px-5 py-4 font-black">{item.name}<p className="text-xs font-medium text-muted-foreground">{item.notes || item.category || 'Sem observações'}</p></td>
-                          <td className="px-5 py-4 text-muted-foreground">{item.sku || '-'}</td>
-                          <td className="px-5 py-4">{formatQuantity(item.quantity)} {unitLabel(item.unit)}</td>
-                          <td className="px-5 py-4 text-right font-black">{money(item.unitPrice)}</td>
-                          <td className="px-5 py-4 text-right"><button onClick={() => setItemModal({ mode: 'edit', table, item })} className="mr-2 rounded-xl border px-3 py-2 font-bold">Editar</button><button onClick={() => removeItem(table, item)} className="rounded-xl border px-3 py-2 font-bold text-red-500">Remover</button></td>
+                          <td className="px-4 py-3">
+                            <p className="font-black">{item.name}</p>
+                            <p className="text-xs font-bold text-muted-foreground">{item.notes || item.category || '—'}</p>
+                          </td>
+                          <td className="px-4 py-3 font-bold text-muted-foreground">{item.sku || '—'}</td>
+                          <td className="px-4 py-3 font-bold">{item.quantity} {item.unit}</td>
+                          <td className="px-4 py-3 text-right font-bold">{money(item.unitPrice)}</td>
+                          <td className="px-4 py-3 text-right font-black text-primary">{money(item.price)}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-end gap-2">
+                              <button onClick={() => openEditItem(table, item)} className="grid size-9 place-items-center rounded-xl border hover:bg-secondary"><Edit3 className="size-4" /></button>
+                              <button onClick={() => deleteItem(table, item)} className="grid size-9 place-items-center rounded-xl border text-destructive hover:bg-destructive/10"><Trash2 className="size-4" /></button>
+                            </div>
+                          </td>
                         </tr>
-                      )) : <tr><td className="px-5 py-8 text-center text-muted-foreground" colSpan={5}>Nenhum item cadastrado nessa tabela.</td></tr>}
+                      ))}
+                      {table.items.length === 0 ? (
+                        <tr><td colSpan={6} className="px-4 py-8 text-center text-sm font-bold text-muted-foreground">Nenhum item cadastrado nessa tabela.</td></tr>
+                      ) : null}
                     </tbody>
                   </table>
                 </div>
               </article>
             ))}
-          </div>
-        ) : (
-          <div className="rounded-[2rem] border bg-card p-10 text-center"><h2 className="text-2xl font-black">Nenhuma tabela encontrada</h2><p className="mt-2 text-muted-foreground">Crie sua primeira tabela para liberar produtos no portal.</p></div>
+          </section>
         )}
-      </section>
 
-      {tableModal && <TableModal modal={tableModal} saving={saving} onClose={() => setTableModal(null)} onSave={(payload) => saveTable(payload, tableModal.table)} />}
-      {itemModal && <ItemModal modal={itemModal} saving={saving} onClose={() => setItemModal(null)} onSave={(payload) => saveItem(payload, itemModal.table, itemModal.item)} />}
+        {!loading && filteredTables.length === 0 ? (
+          <div className="ordr-panel rounded-[2rem] p-10 text-center">
+            <TableProperties className="mx-auto mb-3 size-8 text-muted-foreground" />
+            <p className="font-black">Nenhuma tabela encontrada</p>
+            <p className="mt-1 text-sm font-bold text-muted-foreground">Crie a primeira tabela para liberar produtos no catálogo.</p>
+          </div>
+        ) : null}
+
+        {tableModal ? (
+          <div className="modal-backdrop">
+            <form onSubmit={submitTable} className="modal-card ordr-panel p-5 md:p-6">
+              <ModalHeader title={tableModal.mode === 'create' ? 'Nova tabela' : 'Editar tabela'} onClose={() => setTableModal(null)} />
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Nome</span><input className="ordr-input" value={tableForm.name} onChange={(e) => setTableForm((f) => ({ ...f, name: e.target.value }))} required /></label>
+                <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Descrição</span><textarea className="ordr-input" value={tableForm.description ?? ''} onChange={(e) => setTableForm((f) => ({ ...f, description: e.target.value }))} /></label>
+                <label className="space-y-2"><span className="text-sm font-black">Válida de</span><input type="date" className="ordr-input" value={tableForm.validFrom ?? ''} onChange={(e) => setTableForm((f) => ({ ...f, validFrom: e.target.value }))} /></label>
+                <label className="space-y-2"><span className="text-sm font-black">Válida até</span><input type="date" className="ordr-input" value={tableForm.validUntil ?? ''} onChange={(e) => setTableForm((f) => ({ ...f, validUntil: e.target.value }))} /></label>
+                <label className="flex items-center gap-3 rounded-2xl border bg-background/60 p-4 md:col-span-2"><input type="checkbox" checked={tableForm.active ?? true} onChange={(e) => setTableForm((f) => ({ ...f, active: e.target.checked }))} /> <span className="text-sm font-black">Tabela ativa</span></label>
+              </div>
+              <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setTableModal(null)} className="ordr-button-soft">Cancelar</button><button className="ordr-button-primary" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null}Salvar</button></div>
+            </form>
+          </div>
+        ) : null}
+
+        {itemModal ? (
+          <div className="modal-backdrop">
+            <form onSubmit={submitItem} className="modal-card ordr-panel p-5 md:p-6">
+              <ModalHeader title={itemModal.item ? 'Editar item' : `Novo item em ${itemModal.table.name}`} onClose={() => setItemModal(null)} />
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Nome do item</span><input className="ordr-input" value={itemForm.itemName} onChange={(e) => setItemForm((f) => ({ ...f, itemName: e.target.value }))} required /></label>
+                <label className="space-y-2"><span className="text-sm font-black">SKU</span><input className="ordr-input" value={itemForm.sku ?? ''} onChange={(e) => setItemForm((f) => ({ ...f, sku: e.target.value }))} /></label>
+                <label className="space-y-2"><span className="text-sm font-black">Unidade</span><input className="ordr-input" value={itemForm.unit} onChange={(e) => setItemForm((f) => ({ ...f, unit: e.target.value }))} /></label>
+                <label className="space-y-2"><span className="text-sm font-black">Quantidade</span><input type="number" step="0.001" className="ordr-input" value={itemForm.quantity} onChange={(e) => setItemForm((f) => ({ ...f, quantity: e.target.value }))} /></label>
+                <label className="space-y-2"><span className="text-sm font-black">Preço unitário</span><input type="number" step="0.01" className="ordr-input" value={itemForm.unitPrice} onChange={(e) => setItemForm((f) => ({ ...f, unitPrice: e.target.value }))} /></label>
+                <label className="space-y-2 md:col-span-2"><span className="text-sm font-black">Observações</span><textarea className="ordr-input" value={itemForm.notes ?? ''} onChange={(e) => setItemForm((f) => ({ ...f, notes: e.target.value }))} /></label>
+              </div>
+              <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setItemModal(null)} className="ordr-button-soft">Cancelar</button><button className="ordr-button-primary" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null}Salvar</button></div>
+            </form>
+          </div>
+        ) : null}
+      </div>
     </SupplierShell>
   )
 }
 
-function TableModal({ modal, saving, onClose, onSave }: { modal: { mode: 'create' | 'edit'; table?: SupplierPriceTable }; saving: boolean; onClose: () => void; onSave: (payload: PriceTablePayload) => void }) {
-  const [form, setForm] = useState<PriceTablePayload>(modal.table ? { name: modal.table.name, description: modal.table.description || '', active: modal.table.active, validFrom: dateInput(modal.table.validFrom), validUntil: dateInput(modal.table.validUntil) } : EMPTY_TABLE)
-  function submit(e: FormEvent) { e.preventDefault(); onSave(form) }
-  return <Modal title={modal.mode === 'create' ? 'Nova tabela' : 'Editar tabela'} onClose={onClose}><form onSubmit={submit} className="space-y-4"><Field label="Nome" value={form.name} onChange={(name) => setForm({ ...form, name })} required /><Field label="Descrição" value={form.description || ''} onChange={(description) => setForm({ ...form, description })} /><div className="grid gap-3 md:grid-cols-2"><Field type="date" label="Válida de" value={form.validFrom || ''} onChange={(validFrom) => setForm({ ...form, validFrom })} /><Field type="date" label="Válida até" value={form.validUntil || ''} onChange={(validUntil) => setForm({ ...form, validUntil })} /></div><label className="flex items-center justify-between rounded-2xl border p-4 font-black"><span>Tabela ativa</span><input type="checkbox" checked={Boolean(form.active)} onChange={(e) => setForm({ ...form, active: e.target.checked })} /></label><button disabled={saving} className="w-full rounded-2xl bg-primary px-5 py-3 font-black text-primary-foreground disabled:opacity-60">{saving ? 'Salvando...' : 'Salvar tabela'}</button></form></Modal>
+function ModalHeader({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <div className="mb-5 flex items-center justify-between gap-4">
+      <div><span className="ordr-kicker">Cadastro</span><h2 className="mt-3 text-2xl font-black tracking-tight">{title}</h2></div>
+      <button type="button" onClick={onClose} className="grid size-10 place-items-center rounded-2xl border bg-background/70"><X className="size-4" /></button>
+    </div>
+  )
 }
-
-function ItemModal({ modal, saving, onClose, onSave }: { modal: { mode: 'create' | 'edit'; table: SupplierPriceTable; item?: SupplierProduct }; saving: boolean; onClose: () => void; onSave: (payload: PriceTableItemPayload) => void }) {
-  const [form, setForm] = useState<PriceTableItemPayload>(modal.item ? { itemName: modal.item.name, sku: modal.item.sku || '', unit: modal.item.unit, quantity: modal.item.quantity, unitPrice: modal.item.unitPrice, notes: modal.item.notes || '' } : EMPTY_ITEM)
-  function submit(e: FormEvent) { e.preventDefault(); onSave(form) }
-  return <Modal title={modal.mode === 'create' ? `Novo item · ${modal.table.name}` : 'Editar item'} onClose={onClose}><form onSubmit={submit} className="space-y-4"><Field label="Item" value={form.itemName} onChange={(itemName) => setForm({ ...form, itemName })} required /><Field label="SKU / Código" value={form.sku || ''} onChange={(sku) => setForm({ ...form, sku })} /><div className="grid gap-3 md:grid-cols-3"><Field label="Quantidade" type="number" step="0.001" value={String(form.quantity)} onChange={(quantity) => setForm({ ...form, quantity })} required /><label className="grid gap-2 text-sm font-black">Unidade<select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="rounded-2xl border bg-background px-4 py-3 outline-none"><option value="unit">un.</option><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option></select></label><Field label="Preço" type="number" step="0.01" value={String(form.unitPrice)} onChange={(unitPrice) => setForm({ ...form, unitPrice })} required /></div><Field label="Observações" value={form.notes || ''} onChange={(notes) => setForm({ ...form, notes })} /><button disabled={saving} className="w-full rounded-2xl bg-primary px-5 py-3 font-black text-primary-foreground disabled:opacity-60">{saving ? 'Salvando...' : 'Salvar item'}</button></form></Modal>
-}
-
-function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) { return <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm"><div className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-[2rem] border bg-background p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between gap-3"><h2 className="text-2xl font-black">{title}</h2><button onClick={onClose} className="grid size-10 place-items-center rounded-2xl border"><X className="size-4" /></button></div>{children}</div></div> }
-function Field({ label, value, onChange, type = 'text', required, step }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; step?: string }) { return <label className="grid gap-2 text-sm font-black">{label}<input type={type} step={step} required={required} value={value} onChange={(e) => onChange(e.target.value)} className="rounded-2xl border bg-background px-4 py-3 outline-none focus:ring-2 focus:ring-primary" /></label> }
-function money(value: number) { return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }
-function formatQuantity(value: number) { return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 3 }) }
-function unitLabel(unit: string) { return unit === 'unit' ? 'un.' : unit }
-function dateInput(value?: string | null) { if (!value) return ''; return value.slice(0, 10) }

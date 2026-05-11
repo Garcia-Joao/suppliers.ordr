@@ -1,31 +1,26 @@
 'use client'
 
-import { ClipboardList, Construction, PackageCheck } from 'lucide-react'
+import { Clock3, ClipboardList } from 'lucide-react'
 import { SupplierShell } from '@/components/layout/supplier-shell'
 
-export default function OrdersPage() {
+export default function PedidosPage() {
   return (
     <SupplierShell>
-      <section className="grid min-h-[70vh] place-items-center rounded-[2rem] border bg-card p-8 text-center">
-        <div className="max-w-2xl">
-          <div className="mx-auto mb-6 grid size-20 place-items-center rounded-[2rem] bg-secondary">
-            <Construction className="size-9 text-primary" />
+      <div className="pb-24 lg:pb-0">
+        <section className="ordr-panel relative overflow-hidden rounded-[2rem] p-6 md:p-10">
+          <div className="pointer-events-none absolute -right-24 -top-24 size-80 rounded-full bg-primary/20 blur-3xl" />
+          <div className="relative max-w-3xl">
+            <span className="ordr-kicker"><ClipboardList className="size-3.5" /> Pedidos</span>
+            <h1 className="mt-4 text-3xl font-black tracking-tight md:text-6xl">Pedidos em breve</h1>
+            <p className="mt-4 text-base font-semibold leading-7 text-muted-foreground md:text-lg">
+              A área de pedidos está pausada por enquanto. Quando ativarmos, o fornecedor poderá receber, aceitar e acompanhar requisições diretamente por aqui.
+            </p>
+            <div className="mt-8 inline-flex items-center gap-3 rounded-[1.5rem] border bg-background/65 px-5 py-4 text-sm font-black text-muted-foreground">
+              <Clock3 className="size-5 text-primary" /> Fluxo reservado para a próxima etapa
+            </div>
           </div>
-          <p className="text-sm font-black uppercase tracking-[0.25em] text-primary">Pedidos</p>
-          <h1 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">Pedidos pausados por enquanto</h1>
-          <p className="mt-4 text-muted-foreground md:text-lg">
-            Essa área vai receber as requisições de compra enviadas pelas empresas ORDR. Por enquanto, seguimos com foco em Dashboard, Produtos e Tabelas de preço.
-          </p>
-          <div className="mt-8 grid gap-3 md:grid-cols-2">
-            <Info icon={ClipboardList} title="Requisições" text="Aqui aparecerão pedidos recebidos, prazos e status." />
-            <Info icon={PackageCheck} title="Entrega" text="Depois poderemos aceitar, separar e concluir pedidos." />
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </SupplierShell>
   )
-}
-
-function Info({ icon: Icon, title, text }: { icon: any; title: string; text: string }) {
-  return <div className="rounded-2xl border bg-background/60 p-4 text-left"><Icon className="mb-3 size-5 text-primary" /><h2 className="font-black">{title}</h2><p className="mt-1 text-sm text-muted-foreground">{text}</p></div>
 }
