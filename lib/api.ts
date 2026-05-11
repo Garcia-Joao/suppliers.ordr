@@ -80,7 +80,7 @@ export const supplierApi = {
     return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/${itemId}`, json('DELETE'))
   },
   async togglePriceTableItemActive(tableId: string, itemId: string, active: boolean) {
-    return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/${itemId}/active`, json('PATCH', { active }))
+    return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/${itemId}`, json('PATCH', { active }))
   },
   async adjustItemStock(tableId: string, itemId: string, payload: StockAdjustmentPayload) {
     return request<{ tables: SupplierPriceTable[] }>(`/supplier-portal/price-tables/${tableId}/items/${itemId}/stock-adjust`, json('PATCH', payload))

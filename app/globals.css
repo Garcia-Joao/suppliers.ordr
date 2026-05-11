@@ -243,3 +243,148 @@ select.field { appearance: none; }
   background: #020617;
   color: white;
 }
+
+.supplier-field {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgb(226 232 240);
+  background: rgb(248 250 252);
+  padding: 0.85rem 1rem;
+  color: rgb(15 23 42);
+  font-size: 0.9rem;
+  font-weight: 700;
+  outline: none;
+}
+
+.dark .supplier-field {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.92);
+  color: white;
+}
+
+.supplier-field::placeholder {
+  color: rgb(148 163 184);
+}
+
+.supplier-field:focus {
+  border-color: rgba(16, 185, 129, 0.65);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+}
+
+.supplier-field option {
+  background: white;
+  color: rgb(15 23 42);
+}
+
+.dark .supplier-field option {
+  background: #020617;
+  color: white;
+}
+
+.supplier-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(226 232 240);
+  background: rgb(248 250 252);
+  padding: 0.75rem 1rem;
+  color: rgb(51 65 85);
+  font-size: 0.875rem;
+  font-weight: 900;
+  transition: all 180ms ease;
+}
+
+.supplier-button:hover {
+  background: rgb(241 245 249);
+}
+
+.dark .supplier-button {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgb(226 232 240);
+}
+
+.dark .supplier-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.supplier-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  background: rgb(16 185 129);
+  padding: 0.75rem 1rem;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 900;
+  transition: all 180ms ease;
+}
+
+.supplier-button-primary:hover {
+  background: rgb(52 211 153);
+}
+
+.dark .supplier-button-primary {
+  color: rgb(2 6 23);
+}
+
+.supplier-button-primary:disabled,
+.supplier-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.supplier-button-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(254 202 202);
+  background: rgb(254 242 242);
+  padding: 0.75rem 1rem;
+  color: rgb(220 38 38);
+  font-size: 0.875rem;
+  font-weight: 900;
+  transition: all 180ms ease;
+}
+
+.supplier-button-danger:hover {
+  background: rgb(254 226 226);
+}
+
+.dark .supplier-button-danger {
+  border-color: rgba(248, 113, 113, 0.25);
+  background: rgba(248, 113, 113, 0.1);
+  color: rgb(254 202 202);
+}
+
+.stock-mini-button {
+  height: 2.25rem;
+  width: 2.25rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgb(226 232 240);
+  background: white;
+  color: rgb(15 23 42);
+  font-size: 1rem;
+  font-weight: 900;
+  transition: all 180ms ease;
+}
+
+.stock-mini-button:hover {
+  background: rgb(241 245 249);
+}
+
+.dark .stock-mini-button {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: white;
+}
+
+.dark .stock-mini-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
