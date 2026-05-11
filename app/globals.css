@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-:root {
+':root {
   --background: oklch(0.12 0.014 170);
   --foreground: oklch(0.98 0 0);
   --card: oklch(0.16 0.018 170);
@@ -39,6 +39,9 @@
   --border: oklch(0.88 0.018 165);
   --input: oklch(0.95 0.012 165);
   --ring: oklch(0.67 0.16 155);
+  --success: oklch(0.64 0.18 145);
+  --warning: oklch(0.78 0.15 85);
+  --destructive: oklch(0.58 0.22 25);
 }
 
 @theme inline {
@@ -58,9 +61,10 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-2xl: calc(var(--radius) + 9px);
 }
 
 * { box-sizing: border-box; border-color: var(--border); }
@@ -70,32 +74,146 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 10% 10%, color-mix(in oklch, var(--primary) 20%, transparent), transparent 34rem),
-    radial-gradient(circle at 90% 0%, color-mix(in oklch, var(--accent) 18%, transparent), transparent 30rem),
-    var(--background);
+    radial-gradient(circle at 8% 12%, color-mix(in oklch, var(--primary) 24%, transparent), transparent 34rem),
+    radial-gradient(circle at 94% 2%, color-mix(in oklch, var(--accent) 18%, transparent), transparent 30rem),
+    linear-gradient(135deg, color-mix(in oklch, var(--background) 90%, black), var(--background));
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  text-rendering: geometricPrecision;
 }
 button, input, select, textarea { font: inherit; }
 a { color: inherit; text-decoration: none; }
 
 .glass-card {
-  background: color-mix(in oklch, var(--card) 86%, transparent);
-  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
-  box-shadow: 0 20px 70px rgb(15 23 42 / 0.10);
-  backdrop-filter: blur(18px);
+  background: color-mix(in oklch, var(--card) 82%, transparent);
+  border: 1px solid color-mix(in oklch, var(--border) 78%, transparent);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.18);
+  backdrop-filter: blur(20px);
 }
 
-.field {
+.ordr-panel {
+  border: 1px solid color-mix(in oklch, var(--border) 82%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--card) 96%, transparent), color-mix(in oklch, var(--card) 82%, transparent));
+  box-shadow: 0 18px 60px rgb(0 0 0 / 0.12);
+}
+
+.ordr-input {
+  height: 2.75rem;
   width: 100%;
   border-radius: 1rem;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
-  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--card) 94%, var(--background));
+  padding: 0 0.9rem;
   font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--foreground);
   outline: none;
 }
 
+.ordr-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent); }
+textarea.ordr-input { min-height: 7rem; padding-top: 0.8rem; resize: vertical; }
+
+.field {
+  min-height: 2.85rem;
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in oklch, var(--border) 92%, transparent);
+  background: color-mix(in oklch, var(--card) 96%, var(--background));
+  padding: 0 0.95rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--foreground);
+  outline: none;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035), 0 10px 28px rgb(0 0 0 / 0.08);
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.field::placeholder { color: color-mix(in oklch, var(--muted-foreground) 78%, transparent); }
 .field:focus {
-  border-color: hsl(var(--primary));
+  border-color: var(--primary);
+  background: color-mix(in oklch, var(--card) 100%, var(--background));
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent), 0 14px 34px rgb(0 0 0 / 0.10);
+}
+.field:disabled { cursor: not-allowed; opacity: .68; }
+textarea.field { min-height: 7.5rem; padding-top: .85rem; resize: vertical; }
+select.field { appearance: none; }
+
+.dark .field {
+  background: color-mix(in oklch, var(--card) 88%, black);
+  border-color: color-mix(in oklch, var(--border) 82%, white 4%);
+}
+
+.dark .field:focus {
+  background: color-mix(in oklch, var(--card) 98%, black);
+}
+
+
+.ordr-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.75rem;
+  border-radius: 1rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 900;
+  box-shadow: 0 16px 34px color-mix(in oklch, var(--primary) 26%, transparent);
+  transition: transform .18s ease, opacity .18s ease;
+}
+.ordr-button-primary:hover { transform: translateY(-1px); }
+.ordr-button-primary:disabled { opacity: .6; transform: none; }
+
+.ordr-button-soft {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.75rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--background) 64%, transparent);
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 900;
+  color: var(--foreground);
+  transition: background .18s ease, transform .18s ease;
+}
+.ordr-button-soft:hover { background: var(--secondary); transform: translateY(-1px); }
+
+.ordr-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--primary) 26%, var(--border));
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+  padding: .45rem .75rem;
+  font-size: .68rem;
+  font-weight: 950;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.58);
+  padding: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+.modal-card {
+  width: min(100%, 860px);
+  max-height: 92vh;
+  overflow: auto;
+  border-radius: 2rem;
 }

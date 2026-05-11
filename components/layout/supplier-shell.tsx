@@ -111,6 +111,7 @@ export function SupplierShell({ children }: { children: ReactNode }) {
   }, [companyQuery, session?.companies])
 
   const hasMultipleCompanies = (session?.companies?.length ?? 0) > 1
+  const currentCompanyId = session?.user.currentCompany?.id ?? session?.user.companyId ?? session?.supplierId ?? ''
 
   async function logout() {
     try {
@@ -137,7 +138,9 @@ export function SupplierShell({ children }: { children: ReactNode }) {
         return
       }
 
-      redirectToMainApp()
+      // Se a empresa escolhida for uma operação ORDR, saímos do portal de fornecedores
+      // e voltamos para o app principal já com a empresa ativa atualizada no cookie.
+      window.location.href = getMainSelectionUrl()
     } catch (error) {
       setSwitchError(error instanceof Error ? error.message : 'Não foi possível trocar de empresa.')
     } finally {
@@ -191,17 +194,15 @@ export function SupplierShell({ children }: { children: ReactNode }) {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-black">{session.supplierName}</p>
-                <p className="text-xs font-bold text-muted-foreground">Empresa ativa</p>
+                <p className="text-xs font-bold text-muted-foreground">Empresa ativa · clique para trocar</p>
               </div>
-              {hasMultipleCompanies ? <RefreshCw className="size-4 shrink-0 text-primary" /> : null}
+              <RefreshCw className={clsx('size-4 shrink-0 text-primary transition', hasMultipleCompanies ? 'opacity-100 group-hover:rotate-180' : 'opacity-35')} />
             </div>
             <div className="relative flex items-center justify-between gap-2">
               <span className="rounded-full bg-primary/12 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-primary ring-1 ring-primary/20">
                 Fornecedor
               </span>
-              {hasMultipleCompanies ? (
-                <span className="text-xs font-black text-primary">Clique para trocar</span>
-              ) : null}
+              <span className="text-xs font-black text-primary">{hasMultipleCompanies ? 'Trocar empresa' : 'Única empresa'}</span>
             </div>
           </button>
         </div>
@@ -315,7 +316,7 @@ export function SupplierShell({ children }: { children: ReactNode }) {
             <div className="grid gap-3 md:grid-cols-2">
               {companies.map((company) => {
                 const supplier = isSupplierCompany(company)
-                const active = company.id === session.supplierId
+                const active = company.id === currentCompanyId
                 const switching = switchingCompanyId === company.id
 
                 return (
