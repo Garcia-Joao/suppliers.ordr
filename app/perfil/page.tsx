@@ -1,210 +1,175 @@
 'use client'
 
-import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
-import { Camera, CheckCircle2, Copy, Loader2, Save, UserCircle } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { SupplierShell } from '@/components/layout/supplier-shell'
 import { supplierApi, type OperatingHour, type SupplierProfile } from '@/lib/api'
+import { Eye, EyeOff, Loader2, RadioTower, Save } from 'lucide-react'
 
-const days: OperatingHour[] = [
-  { day: 'sun', label: 'Domingo', enabled: false, startTime: '09:00', endTime: '18:00' },
-  { day: 'mon', label: 'Segunda', enabled: true, startTime: '09:00', endTime: '18:00' },
-  { day: 'tue', label: 'Terça', enabled: true, startTime: '09:00', endTime: '18:00' },
-  { day: 'wed', label: 'Quarta', enabled: true, startTime: '09:00', endTime: '18:00' },
-  { day: 'thu', label: 'Quinta', enabled: true, startTime: '09:00', endTime: '18:00' },
-  { day: 'fri', label: 'Sexta', enabled: true, startTime: '09:00', endTime: '18:00' },
-  { day: 'sat', label: 'Sábado', enabled: false, startTime: '09:00', endTime: '14:00' },
+const emptyHours: OperatingHour[] = [
+  { day: 'sun', label: 'Domingo', enabled: false, startTime: '08:00', endTime: '18:00' },
+  { day: 'mon', label: 'Segunda', enabled: true, startTime: '08:00', endTime: '18:00' },
+  { day: 'tue', label: 'Terça', enabled: true, startTime: '08:00', endTime: '18:00' },
+  { day: 'wed', label: 'Quarta', enabled: true, startTime: '08:00', endTime: '18:00' },
+  { day: 'thu', label: 'Quinta', enabled: true, startTime: '08:00', endTime: '18:00' },
+  { day: 'fri', label: 'Sexta', enabled: true, startTime: '08:00', endTime: '18:00' },
+  { day: 'sat', label: 'Sábado', enabled: true, startTime: '09:00', endTime: '13:00' },
 ]
 
-function mergeHours(hours?: OperatingHour[]) {
-  return days.map((day) => hours?.find((item) => item.day === day.day) ?? day)
+const fallback: SupplierProfile = {
+  id: 'fallback',
+  name: 'Fornecedor ORDR',
+  categories: [],
+  active: true,
+  onlineEnabled: true,
+  publicListingEnabled: false,
+  operatingHours: emptyHours,
+  onlineStatus: { onlineEnabled: true, insideOperatingHours: false, isOnline: false, today: null },
 }
 
-function compressImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const image = new Image()
-      image.onload = () => {
-        const max = 420
-        const scale = Math.min(1, max / Math.max(image.width, image.height))
-        const canvas = document.createElement('canvas')
-        canvas.width = Math.max(1, Math.round(image.width * scale))
-        canvas.height = Math.max(1, Math.round(image.height * scale))
-        const context = canvas.getContext('2d')
-        if (!context) return reject(new Error('Não foi possível preparar a imagem.'))
-        context.drawImage(image, 0, 0, canvas.width, canvas.height)
-        resolve(canvas.toDataURL('image/webp', 0.76))
-      }
-      image.onerror = reject
-      image.src = String(reader.result)
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-export default function PerfilPage() {
-  const [profile, setProfile] = useState<SupplierProfile | null>(null)
-  const [form, setForm] = useState<Partial<SupplierProfile>>({})
-  const [categoryText, setCategoryText] = useState('')
+export default function ProfilePage() {
+  const [supplier, setSupplier] = useState<SupplierProfile>(fallback)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
-    supplierApi.profile()
-      .then(({ supplier }) => {
-        setProfile(supplier)
-        setForm({ ...supplier, operatingHours: mergeHours(supplier.operatingHours) })
-        setCategoryText((supplier.categories ?? []).join(', '))
-      })
-      .finally(() => setLoading(false))
+    supplierApi.profile().then((result) => setSupplier(result.supplier)).catch(() => setSupplier(fallback)).finally(() => setLoading(false))
   }, [])
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
+  const image = supplier.photoData || supplier.photoUrl
+  const isOnline = supplier.onlineStatus?.isOnline
+  const visibilityLabel = supplier.publicListingEnabled ? 'Público para empresas ORDR' : 'Somente por código ORDR'
+
+  const categoriesText = useMemo(() => (supplier.categories ?? []).join(', '), [supplier.categories])
+
+  async function saveProfile(patch: Partial<SupplierProfile>) {
     setSaving(true)
+    setMessage('')
     try {
-      const result = await supplierApi.updateProfile({
-        ...form,
-        categories: categoryText.split(',').map((item) => item.trim()).filter(Boolean),
-        operatingHours: mergeHours(form.operatingHours),
-      })
-      setProfile(result.supplier)
-      setForm({ ...result.supplier, operatingHours: mergeHours(result.supplier.operatingHours) })
-      setCategoryText((result.supplier.categories ?? []).join(', '))
+      const result = await supplierApi.updateProfile(patch)
+      setSupplier(result.supplier)
+      setMessage('Perfil atualizado.')
+      window.setTimeout(() => setMessage(''), 2400)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Erro ao salvar perfil.')
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const photoData = await compressImage(file)
-    setForm((current) => ({ ...current, photoData }))
-  }
-
   function updateHour(index: number, patch: Partial<OperatingHour>) {
-    setForm((current) => {
-      const operatingHours = mergeHours(current.operatingHours)
-      operatingHours[index] = { ...operatingHours[index], ...patch }
-      return { ...current, operatingHours }
-    })
-  }
-
-  async function copyCode() {
-    const code = profile?.ordrCode
-    if (!code) return
-    await navigator.clipboard.writeText(code)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1500)
+    const next = [...(supplier.operatingHours ?? emptyHours)]
+    next[index] = { ...next[index], ...patch }
+    setSupplier((current) => ({ ...current, operatingHours: next }))
   }
 
   return (
     <SupplierShell>
-      <form onSubmit={handleSubmit} className="space-y-4 pb-24 lg:pb-0">
-        <section className="ordr-panel rounded-[2rem] p-5 md:p-7">
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <span className="ordr-kicker"><UserCircle className="size-3.5" /> Perfil</span>
-              <h1 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">Dados do fornecedor</h1>
-              <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-muted-foreground">
-                Configure dados comerciais, imagem, categorias e horários de expediente.
-              </p>
+      <section className="glass-card rounded-[2rem] p-5 md:p-8">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.25em] text-primary">Perfil e visibilidade</p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">Dados do fornecedor</h1>
+            <p className="mt-3 max-w-2xl text-muted-foreground">
+              Controle seus dados, horários e se sua tabela aparece automaticamente para empresas ORDR.
+            </p>
+          </div>
+          <span className="rounded-2xl border bg-background/60 px-4 py-2 text-sm font-bold text-muted-foreground">
+            {loading ? 'Carregando...' : saving ? 'Salvando...' : 'Sincronizado'}
+          </span>
+        </div>
+
+        {message && <div className="mb-5 rounded-2xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm font-black text-primary">{message}</div>}
+
+        <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
+          <aside className="rounded-[2rem] border bg-card p-5">
+            <div className="grid aspect-square place-items-center overflow-hidden rounded-[1.5rem] bg-secondary">
+              {image ? <img src={image} alt={supplier.name} className="h-full w-full object-cover" /> : <span className="text-6xl font-black text-primary">{supplier.name.slice(0, 1)}</span>}
             </div>
-            <button className="ordr-button-primary" disabled={saving || loading}>
-              {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-              Salvar alterações
-            </button>
-          </div>
-        </section>
+            <h2 className="mt-5 text-2xl font-black">{supplier.name}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Código ORDR</p>
+            <p className="mt-1 rounded-2xl border bg-background px-4 py-3 text-xl font-black tracking-[0.18em] text-primary">{supplier.ordrCode || '—'}</p>
 
-        {loading ? (
-          <div className="ordr-panel flex items-center justify-center gap-3 rounded-[2rem] p-10 text-sm font-black text-muted-foreground">
-            <Loader2 className="size-5 animate-spin text-primary" /> Carregando perfil...
-          </div>
-        ) : (
-          <div className="grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
-            <section className="ordr-panel rounded-[2rem] p-5">
-              <div className="flex flex-col items-center text-center">
-                <div className="relative mb-4 size-36 overflow-hidden rounded-[2rem] border bg-background">
-                  {form.photoData || form.photoUrl ? (
-                    <img src={form.photoData || form.photoUrl || ''} alt="Fornecedor" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center bg-primary/10 text-primary"><UserCircle className="size-14" /></div>
-                  )}
-                </div>
-                <label className="ordr-button-soft cursor-pointer">
-                  <Camera className="size-4" /> Selecionar imagem
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImage} />
-                </label>
-
-                <div className="mt-6 w-full rounded-[1.5rem] border bg-background/60 p-4 text-left">
-                  <p className="text-xs font-black uppercase tracking-wide text-muted-foreground">Código ORDR</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <p className="flex-1 text-2xl font-black tracking-widest">{profile?.ordrCode ?? '—'}</p>
-                    <button type="button" onClick={copyCode} className="grid size-10 place-items-center rounded-xl border hover:bg-secondary"><Copy className="size-4" /></button>
-                  </div>
-                  {copied ? <p className="mt-2 text-xs font-black text-primary">Copiado!</p> : null}
-                  <p className="mt-2 text-xs font-bold text-muted-foreground">Esse código é gerado automaticamente e não pode ser alterado.</p>
-                </div>
-
-                <label className="mt-4 flex w-full items-center justify-between gap-4 rounded-[1.5rem] border bg-background/60 p-4 text-left">
-                  <div>
-                    <p className="text-sm font-black">Disponibilizar online</p>
-                    <p className="text-xs font-bold text-muted-foreground">O status final também considera o expediente.</p>
-                  </div>
-                  <input type="checkbox" checked={Boolean(form.onlineEnabled)} onChange={(e) => setForm((current) => ({ ...current, onlineEnabled: e.target.checked }))} />
-                </label>
-              </div>
-            </section>
-
-            <section className="ordr-panel rounded-[2rem] p-5">
-              <h2 className="mb-5 text-2xl font-black">Informações comerciais</h2>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Nome"><input className="ordr-input" value={form.name ?? ''} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} /></Field>
-                <Field label="Documento"><input className="ordr-input" value={form.document ?? ''} onChange={(e) => setForm((f) => ({ ...f, document: e.target.value }))} /></Field>
-                <Field label="Contato"><input className="ordr-input" value={form.contactName ?? ''} onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))} /></Field>
-                <Field label="Telefone"><input className="ordr-input" value={form.phone ?? ''} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} /></Field>
-                <Field label="E-mail"><input className="ordr-input" value={form.email ?? ''} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} /></Field>
-                <Field label="Categorias"><input className="ordr-input" value={categoryText} onChange={(e) => setCategoryText(e.target.value)} placeholder="Bebidas, Carnes, Limpeza" /></Field>
-                <Field label="Endereço" wide><textarea className="ordr-input" value={form.address ?? ''} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} /></Field>
-                <Field label="Observações" wide><textarea className="ordr-input" value={form.notes ?? ''} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} /></Field>
-              </div>
-            </section>
-
-            <section className="ordr-panel rounded-[2rem] p-5 xl:col-span-2">
-              <div className="mb-5 flex items-center gap-3">
-                <div className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary"><CheckCircle2 className="size-5" /></div>
+            <div className={`mt-5 rounded-[1.5rem] border p-4 ${isOnline ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-zinc-500/20 bg-secondary'}`}>
+              <div className="flex items-center gap-3">
+                <span className={`grid size-10 place-items-center rounded-2xl ${isOnline ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground'}`}>
+                  <RadioTower className="size-5" />
+                </span>
                 <div>
-                  <h2 className="text-2xl font-black">Horário de expediente</h2>
-                  <p className="text-sm font-bold text-muted-foreground">O online automático usa estes horários por dia da semana.</p>
+                  <p className="text-lg font-black">{isOnline ? 'Online agora' : 'Offline agora'}</p>
+                  <p className="text-xs font-bold text-muted-foreground">
+                    {supplier.onlineEnabled ? 'Disponibilidade manual ativa' : 'Disponibilidade pausada'} · {supplier.onlineStatus?.insideOperatingHours ? 'dentro do expediente' : 'fora do expediente'}
+                  </p>
                 </div>
               </div>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {mergeHours(form.operatingHours).map((hour, index) => (
-                  <div key={hour.day} className="rounded-[1.35rem] border bg-background/60 p-4">
-                    <label className="mb-4 flex items-center justify-between gap-3">
-                      <span className="font-black">{hour.label}</span>
+            </div>
+          </aside>
+
+          <div className="space-y-5">
+            <div className="rounded-[2rem] border bg-card p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-black">Disponibilização automática</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {visibilityLabel}. Desativado significa que empresas só acessam suas tabelas informando seu código ORDR.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => saveProfile({ publicListingEnabled: !supplier.publicListingEnabled })}
+                  disabled={saving}
+                  className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black transition disabled:opacity-50 ${supplier.publicListingEnabled ? 'bg-primary text-primary-foreground' : 'border border-border bg-background hover:bg-secondary'}`}
+                >
+                  {supplier.publicListingEnabled ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                  {supplier.publicListingEnabled ? 'Visível para todos' : 'Somente por código'}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border bg-card p-5">
+              <h2 className="text-xl font-black">Dados comerciais</h2>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <input className="field" value={supplier.name} onChange={(e) => setSupplier((c) => ({ ...c, name: e.target.value }))} placeholder="Nome" />
+                <input className="field" value={supplier.document ?? ''} onChange={(e) => setSupplier((c) => ({ ...c, document: e.target.value }))} placeholder="Documento" />
+                <input className="field" value={supplier.contactName ?? ''} onChange={(e) => setSupplier((c) => ({ ...c, contactName: e.target.value }))} placeholder="Contato" />
+                <input className="field" value={supplier.phone ?? ''} onChange={(e) => setSupplier((c) => ({ ...c, phone: e.target.value }))} placeholder="Telefone" />
+                <input className="field" value={supplier.email ?? ''} onChange={(e) => setSupplier((c) => ({ ...c, email: e.target.value }))} placeholder="E-mail" />
+                <input className="field" value={supplier.address ?? ''} onChange={(e) => setSupplier((c) => ({ ...c, address: e.target.value }))} placeholder="Endereço" />
+                <input className="field md:col-span-2" value={categoriesText} onChange={(e) => setSupplier((c) => ({ ...c, categories: e.target.value.split(',').map((item) => item.trim()).filter(Boolean) }))} placeholder="Categorias, separadas por vírgula" />
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border bg-card p-5">
+              <h2 className="text-xl font-black">Horários de expediente</h2>
+              <div className="mt-4 space-y-3">
+                {(supplier.operatingHours ?? emptyHours).map((hour, index) => (
+                  <div key={hour.day} className="grid gap-3 rounded-2xl border bg-background p-3 md:grid-cols-[1fr_120px_120px_110px] md:items-center">
+                    <label className="flex items-center gap-3 font-black">
                       <input type="checkbox" checked={hour.enabled} onChange={(e) => updateHour(index, { enabled: e.target.checked })} />
+                      {hour.label}
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <input type="time" className="ordr-input" value={hour.startTime} onChange={(e) => updateHour(index, { startTime: e.target.value })} disabled={!hour.enabled} />
-                      <input type="time" className="ordr-input" value={hour.endTime} onChange={(e) => updateHour(index, { endTime: e.target.value })} disabled={!hour.enabled} />
-                    </div>
-                    {!hour.enabled ? <p className="mt-3 text-xs font-black text-muted-foreground">Fechado</p> : null}
+                    <input className="field" type="time" value={hour.startTime} onChange={(e) => updateHour(index, { startTime: e.target.value })} />
+                    <input className="field" type="time" value={hour.endTime} onChange={(e) => updateHour(index, { endTime: e.target.value })} />
+                    <span className="text-xs font-black text-muted-foreground">{hour.enabled ? 'Ativo' : 'Fechado'}</span>
                   </div>
                 ))}
               </div>
-            </section>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => saveProfile(supplier)}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Salvar alterações
+              </button>
+            </div>
           </div>
-        )}
-      </form>
+        </div>
+      </section>
     </SupplierShell>
   )
-}
-
-function Field({ label, children, wide = false }: { label: string; children: React.ReactNode; wide?: boolean }) {
-  return <label className={wide ? 'space-y-2 md:col-span-2' : 'space-y-2'}><span className="text-sm font-black">{label}</span>{children}</label>
 }
